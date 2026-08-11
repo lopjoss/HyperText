@@ -1,0 +1,2465 @@
+--!strict
+
+--[[
+
+	HyperText v4.1.3
+
+	Made by @lopjoss
+
+]]
+
+--[[ Info:
+
+	HyperText is an advanced rich text module which lets you style and manipulate
+	text with markup tags. It supports paired tags, like <font=...></font>, that
+	wrap around the text of which it should apply its markup to, with some having
+	the possibility for optional attributes added directly in the opening tag,
+	like <anim=wiggle dur=5 loop=false>. Some values, like animations, can have
+	their own unique attributes too, which you'd also just put in the opening tag. 
+	
+	If you want to just change an attribute of a markup tag, you don't
+	necessarily have to assign a value to the tag, like <anim loop=true>. Value
+	specific attributes still require a value though, like <anim=slide dir=up>.
+
+	Self closing tags, like <br=2>, can be used on their own. This module
+	does not support using < outside of tags.
+	
+	Capitalization doesn't matter for any of the tags, attributes, or values. So
+	<emitImg=123>, <emitimg=123>, or <EMITIMG=123> would all be valid. But this
+	does not apply to arbitrary values, like "rbxasset://fonts/families/Zekton.json"
+	
+	Raw newlines are unsupported, so \n or \r\n are ignored as line breaking
+	syntax. Use the <br=1> markup instead.
+	
+	Some markups or attributes can be deleted if its type is optional. For
+	example the anim markup, if you don't want an animation you must delete the
+	markup. You can delete a markup or attribute by setting its value to "/", or
+	when changing an object's default markups you must delete it by setting its
+	value to HyperText.DELETE.
+	
+	Known issues:
+		Sometimes, especially at smaller sizes or with certain fonts, one character
+		could be unevenly positioned by 1 pixel. I'm currently working on a fix where
+		it coalesces adjacent characters into compatible text runs, rendering each
+		run with a single TextLabel.
+
+]]
+
+--[[ Available markup tags, values and attributes:
+
+	<anim=slide></anim>
+		
+		The animation of the rendered content that plays when actively rendering
+		This markup can be deleted
+		
+		attributes:
+			dur 			: number 			the duration of the animation, only accepts a number above or equal to 0
+			loop 			: boolean 			whether the animation should continuously reverse and repeat
+		
+		all animations and their attributes:
+			slide:
+				dir 		: "up" | "down" 	the direction in which the animated text moves 
+				offset 		: number 			a fraction of text's size to offset the x and y starting position
+				rot 		: number 			the rotation in degrees when starting
+			bounce:
+				dir 		: "up" | "down" 	the direction in which the animated text moves 
+				offset 		: number 			a fraction of text's size to offset the y starting position
+				exp			: number			the exponent applied to the bouncing animation progress (Higher values produce deeper, more pronounced rebounds)
+			wiggle:
+				freq 		: number			the sine wave frequency in Hz (higher value = wiggling faster)
+				offset 		: number			a fraction of one sine wave oscillation offset per character
+				amp 		: number 			a fraction of text's size which acts as the amplitude of the sine wave
+				rot			: boolean			whether each character aligns with the wave's tangent
+			grow:
+				startScale	: number			the scale at which the rendered content starts before growing to its full size
+				exp			: number			the exponent applied to the eased animation progress (Higher values amplify the Back easing overshoot)
+	
+	<clearAnim=wiggle></clearAnim>
+	
+		The animation of the rendered content that plays when clearing the render
+		This markup has the same attributes as the anim markup, but ignores the
+		loop attribute
+		Set its value to "inherit" for it to inherit the anim's values
+		This markup can be deleted
+	
+	<color=255,255,255></color> | <color=red></color>
+	
+		The color of the rendered text
+		Can make use of shortcuts like red, green, blue, etc instead
+		Check the config module to see all those shortcuts
+
+	<font=rbxasset://fonts/families/Arial.json></font> | <font=12187377099></font>
+	
+		The font used for the rendered text
+
+	<italic=true></italic>
+	
+		Indicates whether the rendered text should be italic or not
+		
+	<weight=ExtraBold></weight> | <weight=extrabold></weight>
+	
+		The font weight of the rendered text
+
+	<trans=.25></trans>
+	
+		The transparency of the rendered text
+		
+		attributes:
+			tweenDur		: number?			the duration of the transparency tween in seconds. If this attribute is deleted, transparency is applied immediately
+			tweenFrom		: number			the transparency from which the tween starts
+			loopTween		: boolean			whether the transparency tween should continuously reverse and repeat
+		
+	<clearTransDur=1></clearTransDur>
+	
+		The duration over which it should make the rendered text fully
+		transparent when calling :Clear()
+		Set its value to "inherit" for it to inherit the trans's tweenDur
+		attribute value
+		
+	<size=16></size>
+	
+		The size of the rendered content in pixels
+		Supports sizes between 0 and 100
+		Unaffected by any UIScale applied to the container
+	
+	<shake=true></shake>
+	
+		Shakes the rendered content
+
+		attributes:
+			maxOffset 		: number			the max possible fraction of text's size to offset the x and y starting position
+			dur 			: number 			the duration of the shake
+			loop 			: boolean 			whether the shake should loop or not
+			maxRot			: number			the max possible shake rotation in degrees
+			freq			: number?			the number of shake position and rotation updates per second. If this attribute is deleted, the shake updates every frame
+			fade			: boolean			whether the shake strength gradually slows down as the effect approaches the end of its duration
+			
+	<rainbow=true></rainbow>
+	
+		Cycles the rendered content's color through the colors of a rainbow, with
+		each character slightly color shifted
+
+		attributes:
+			freq			: number			the hue cycle frequency in Hz (higher value = changing color faster)
+			offset			: number			a fraction of one hue cycle offset per character
+
+	<emitImg=1234567890></emitImg>
+	
+		Emits an image with the given ID as a particle effect from the rendered
+		content
+		This markup can be deleted and also inherits the flipbook attributes from
+		the img markup
+		
+		attributes:
+			color 			: Color3 r,g,b				the color of the image
+			applyTransform	: boolean					indicates whether the effect should account for the content's current positional and rotational transforms
+			aspectRatio		: number					the width to height ratio of the image
+			rate 			: number					the emit requests per second per character
+			chance 			: number					the chance in percentage of spawning an image per request
+			lifetime 		: NumberRange min,max 		a range indicating the lifetime of the image in seconds
+			velX			: NumberRange min,max		a range indicating the horizontal velocity measured in a fraction of the character's width per second
+			velY			: NumberRange min,max		a range indicating the vertical velocity measured in a fraction of the text's size per second
+			rotVel			: NumberRange min,max		a range indicating the rotational velocity measured in degrees per second
+			accelX			: NumberRange min,max		a range indicating the horizontal acceleration measured in a fraction of the character's width per second squared
+			accelY			: NumberRange min,max		a range indicating the vertical acceleration measured in a fraction of the text's size per second squared
+			startTrans		: NumberRange min,max		a range indicating the transparency of the image at the beginning of its lifetime
+			endTrans		: NumberRange min,max		a range indicating the transparency of the image at the end of its lifetime
+			startSize 		: NumberRange min,max		a range (fractional of the text's size) indicating the height of the image at the beginning of its lifetime
+			endSize			: NumberRange min,max		a range (fractional of the text's size) indicating the height of the image at the end of its lifetime
+			startPosX		: NumberRange min,max		a range (fractional of the character's width) indicating the horizontal offset of the image at the beginning of its lifetime
+			startPosY		: NumberRange min,max		a range (fractional of the text's size) indicating the vertical offset of the image at the beginning of its lifetime
+			startRot 		: NumberRange min,max		a range indicating the rotation of the image at the beginning of its lifetime
+	
+	<stroke=true></stroke>
+	
+		Gives the rendered text a stroke
+		
+		attributes:
+			trans			: number?				the transparency of the stroke. If this attribute is deleted it will inherit the text's transparency
+			thickness 		: number				a fraction of the text's size which acts as the thickness of the stroke
+			color 			: Color3 r,g,b			the color of the stroke
+
+	<shadow=true></shadow>
+
+		Adds a shadow behind the rendered text
+
+		attributes:
+			color 			: Color3 r,g,b			the color of the shadow
+			offset			: Vector2 x,y			the horizontal offset as a fraction of the character's width and vertical offset as a fraction of the text's size
+			trans			: number?				the transparency of the shadow. If this attribute is deleted, the shadow inherits the rendered text and stroke transparencies
+	
+	<underline=true></underline>
+	
+		Underlines the rendered text
+
+	<strike=true></strike>
+	
+		Applies a strikethrough (horizontal line through the text) to the
+		rendered text
+	
+	<mark=true></mark>
+	
+		Highlights the rendered text
+		
+		attributes:
+			color 			: Color3 r,g,b		the color of the highlight
+			trans			: number			the transparency of the highlight
+	
+	<interval=.05></interval>
+	
+		The interval in seconds between each printed character of the rendered
+		text
+		
+	<clearInterval=.05></clearInterval>
+	
+		The interval in seconds between each cleared character when calling
+		:Clear()
+		Set its value to "inherit" for it to inherit the interval's value
+		
+	<soundId=1234567890></soundId> | <soundId=rbxassetid://1234567890></soundId>
+	
+		The asset ID for the typewriter sound that will be played when actively
+		rendering text
+		This markup can be deleted
+		
+		attributes:
+			volume 			: number			the volume of the created Sound instance
+	
+	<img=1234567890>
+	
+		Adds an image with the given ID
+
+		attributes:
+			plain			: boolean			prevents any markups that apply to images from being applied to the image, excluding clearing markups
+			height			: number			a fraction of the text's size indicating the height of the image, only accepts a number above or equal to 0
+			aspectRatio		: number			the width to height ratio of the image, only accepts a number above or equal to 0
+			trans			: number?			the transparency of the image, if this attribute is deleted it inherits the text's transparency
+			color 			: Color3 r,g,b		the color of the image
+			flipbookLayout	: Vector2? x,y		the number of frames arranged horizontally and vertically in the image. When deleted, the image is not animated
+			flipbookFreq	: number			the number of times the flipbook traverses from its first frame to its final frame per second
+			flipbookLoop	: boolean			whether the flipbook animation repeats after completing
+			flipbookReverse	: boolean			whether the flipbook reverses back to the first frame after reaching the final frame
+	
+	<shiny=true></shiny>
+	
+		Adds shiny sparks to the rendered content
+		This markup uses the same attributes as the emitImg markup
+		
+	<fog=true></fog>
+	
+		Adds a fog effect to the rendered content
+		This markup uses the same attributes as the emitImg markup
+	
+	<wait=5>
+	
+		Pauses rendering for the specified time in seconds
+		Call :ResumeRender() to stop this wait and resume rendering
+
+	<renderEvent=arg>
+	
+		Will fire .renderEvent with its value passed as a string argument
+
+	<br=2>
+	
+		Adds a line break for the specified amount. Only accepts a number equal
+		or above 1
+		Receives a height equal to the current text size on creation
+	
+	<gradient=true></gradient>
+
+		Applies a color gradient to the rendered content
+
+		attributes:
+			colors 			: {Color3} r,g,b;r,g,b;...		the colors of the gradient, supporting up to 18 colors in one gradient
+			rot				: number						the rotation of the gradient in degrees
+			individual		: boolean						whether each character gets its own gradient instead of sharing one across the marked text
+			moveDir			: "left" | "right"				the direction in which the gradient colors move
+			moveSpeed		: number						the amount of full color revolutions the gradient moves per second
+			spacing			: number						a fraction of the marked text's width which is added in between each color. This attribute is only applicable when the individual attribute is set to false and only accepts a number above or equal to 0
+
+	<strokeGradient=true></strokeGradient>
+
+		Applies a color gradient to the rendered text's stroke
+		This markup uses the same attributes as the gradient markup and requires
+		the stroke markup to be set to true
+	
+	<decode=true></decode>
+	
+		Applies a decode effect to the rendered text. Each character switches
+		between random printable ASCII characters after being printed, then
+		restores its original character when the effect's duration ends
+		
+		attributes:
+			dur 			: number			the duration of the decode effect per character in seconds, only accepts a number above or equal to 0
+			freq			: number?			the target number of random character substitutions per second. When deleted, it defaults to every frame
+			loop			: boolean			whether the decode effect continues forever
+
+]]
+
+--[[ Available markups without tags:
+
+	Listed here are some markups which don't use any tags and can only be
+	applied by changing the default markups of an object
+
+	ZIndex : number
+	
+		The Z index given to any rendered content
+		
+	horizontalAlignment : Enum.HorizontalAlignment
+	
+		The horizontal alignment of the rendered content
+
+	verticalAlignment : Enum.VerticalAlignment
+	
+		The vertical alignment of the rendered content
+		
+	scaleDimension : "X" | "Y"
+	
+		The container's dimension used as a reference to proportionally scale
+		the rendered content
+		
+	sizeConstraint : Enum.SizeConstraint
+	
+		The size constraint of the rendered content
+
+]]
+
+--[[ API:
+	
+	.new(container, markups) : hyperTextClassObject
+
+		Creates and returns a new HyperText object.
+
+		container: GuiObject
+		The GuiObject that will contain any rendered content. When it gets
+		destroyed, the object gets destroyed too.
+
+		markups: markups?
+		A markups dict to be merged into the object's default markups. To delete
+		a default markup, set its value to HyperText.DELETE.
+		Obtained from calling .newMarkups().
+	
+	.newMarkups() : markups
+	
+		Returns a full markups shaped dict with values/attributes emptied to nil.
+
+	:UpdateDefaultMarkups(markups)
+	
+		Merges the given markups dict into the object's default markups. To delete
+		a default markup or attribute, set its value to HyperText.DELETE.
+
+		markups: markups
+		The dict, obtained from calling .newMarkups().
+	
+	:Render(text, yield, wrapped, constructOnly)
+
+	    Renders the given text inside the object's container and applies the
+	    object's default markups & attributes to it. Stops any previous render
+	    and clears its text.
+
+		text: string
+		The text (including its markups) that is going to be rendered.
+		
+		yield: boolean?
+	    Indicates whether the render should yield the calling thread.
+		
+		wrapped: boolean?
+		Indicates whether the rendered content should wrap inside the object's
+		container. Defaults to true.
+
+		constructOnly: boolean?
+		Indicates whether this render should only be constructed internally, not
+		rendered. This parameter is meant to be used with :GetConstructionSize()
+		to get the expected size of a render without actually rendering anything.
+	    
+    :CompleteRender()
+	
+		Skips all remaining render intervals immediately. If uncached text bounds
+		are still being calculated asynchronously, this method may return before
+		the render finishes.
+		
+	:PauseRender()
+	
+		Pauses a render.
+		
+	:ResumeRender()
+	
+		Resumes a paused render.
+		
+	:Clear(instant)
+	
+		Stops a render and clears any rendered content. Yields the calling thread
+		until all clearing markups have completed.
+		
+		instant: boolean?
+		Ignores the clearing markups and clears the text instantly.
+
+	:GetConstructionSize() : Vector2?
+	
+		Returns the final width and height of the last render.
+		
+	:GetPlainText() : string?
+	
+		Returns the text used in the last render with all markup tags removed.
+		
+	:Destroy()
+	
+		Stops a render, clears any rendered content, and destroys owned instances.
+		
+	.onRenderEnded
+	
+		A Signal object that fires when a render has completed. Excluding construction
+		only renders.
+		When fired it receives one boolean argument which indicates whether it
+		originated from :CompleteRender().
+		If you have a render that yields the calling thread, I recommend connecting
+		to it before calling :Render(), since renders that yield the calling thread
+		and do not yield internally complete synchronously.
+		
+	.renderEvent
+
+		A Signal object that fires when any <renderEvent=arg> markup has been
+		reached. When fired it receives one string argument which is the value
+		of the markup.
+		
+	.rendering
+	
+		A boolean that indicates whether the object has any active render,
+		despite it possibly being paused.
+
+]]
+
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+local util = require("./Internal/Util")
+local types = require("./Internal/Types")
+local config = require("./Internal/Config")
+local scheduler = require("./Internal/Scheduler")
+local signal = require("./Internal/Signal")
+
+local updater : {[string] : (dt : number) -> ()} = {}
+local markupDataModules = util.getAllMarkupDataModules()
+
+local PARSER_APPEND_STRING_SCHEDULER_ID = 1
+local PARSER_APPEND_WHITESPACE_SCHEDULER_ID = 2
+local PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID = 3
+
+local HyperText = {}
+local methods = {} :: types.hyperTextClassMethods
+HyperText.__index = methods
+
+HyperText.DELETE = util.DELETE_SYNTAX :: nil
+
+export type classType = types.hyperTextClassObject
+
+local function yieldWhile(callback : (elapsed : number) -> boolean)
+	local elapsed = 0
+
+	while callback(elapsed) do
+		elapsed += RunService.Heartbeat:Wait()
+	end
+end
+
+--[[
+	Creates and returns a new HyperText object.
+
+	container: GuiObject
+	The GuiObject that will contain any rendered content. When it gets destroyed, the object gets destroyed too.
+
+	markups: markups?
+	A markups dict to be merged into the object's default markups. To delete a default markup, set its value to <code>HyperText.DELETE</code>.
+	Obtained from calling <code>.newMarkups()</code>.
+]]
+HyperText.new = function(
+	container : GuiObject,
+	markups : types.markups?
+) : types.hyperTextClassObject
+	local self = setmetatable(
+		{
+			_container = container,
+			_markups = util.deepCopy(config.DEFAULT_MARKUPS),
+			_printerScheduler = scheduler.new(),
+			_constructionScheduler = scheduler.new(),
+			_rowEntriesTransformUpdaterId = HttpService:GenerateGUID(),
+			_transformRowEntries = {},
+			_constructionData = {
+				rows = {},
+				rowEntries = {},
+				spans = {},
+			},
+			_printerData = {
+				rowEntries = {},
+			},
+			
+			rendering = false,
+			onRenderEnded = signal.new(),
+			renderEvent = signal.new(),
+		},
+		HyperText
+	) :: types.hyperTextClassObject
+	
+	if markups then
+		self:UpdateDefaultMarkups(markups)
+	end
+	
+	self._destroyCon = container.Destroying:Once(function()
+		self:Destroy()
+	end)
+	
+	updater[self._rowEntriesTransformUpdaterId] = function()
+		task.defer(function()
+			for entry, _ in pairs(self._transformRowEntries) do
+				entry.character.Position = UDim2.fromScale(
+					entry.position.X,
+					entry.position.Y
+				)
+				entry.character.Rotation = entry.rotation
+
+				entry.position = Vector2.zero
+				entry.rotation = 0
+			end
+		end)
+	end
+
+	return self
+end
+
+--[[
+	Returns a full markups shaped dict with values/attributes emptied to nil.
+]]
+HyperText.newMarkups = function()
+	return util.getEmptyMarkups()
+end
+
+methods.UpdateDefaultMarkups = function(
+	self : types.hyperTextClassObject,
+	markups : types.markups
+)
+	util.mergeMarkups(self._markups, markups)
+end
+
+methods.Render = function(
+	self : types.hyperTextClassObject,
+	text : string,
+	yield : boolean?,
+	wrapped : boolean?,
+	constructOnly : boolean?
+)
+	local source, line = debug.info(2, "sl")
+	local renderTraceback = string.format("Resulting from Render call at:\n%s Line %s", source, line)
+	local destroyed = self._destroyed
+	self._renderTraceback = renderTraceback
+	
+	local container = self._container
+	
+	self:Clear(true)
+	
+	if not destroyed then
+		if container.AbsoluteSize.Magnitude > 0 then
+			local automaticSizeX = self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+				and self._markups.scaleDimension.value == "Y"
+				and self._container.AutomaticSize == Enum.AutomaticSize.X
+			
+			if 
+				container.AbsoluteSize.X ~= 0
+				or automaticSizeX
+			then
+				local automaticSizeY = self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+					and self._container.AutomaticSize == Enum.AutomaticSize.Y
+					and self._markups.scaleDimension.value == "X"
+				
+				if 
+					container.AbsoluteSize.Y ~= 0
+					or automaticSizeY
+				then
+					wrapped = wrapped or wrapped == nil and true
+					if wrapped and automaticSizeX then
+						warn("wrapped is set to true but the render is configured for horizontal automatic sizing, this is likely unintended")	
+						
+						wrapped = false
+					end
+					
+					for _, v in pairs(self._constructionData :: {[string] : {any}}) do
+						table.clear(v)
+					end
+					for _, v in pairs(self._printerData :: {[string] : {any}}) do
+						table.clear(v)
+					end
+					
+					local renderId = HttpService:GenerateGUID()
+					self._renderId = renderId
+					self._yieldingFromIntervalMarkup = false
+					self._text = text
+					local constructionMarkups = util.deepCopy(self._markups)
+					self._constructionMarkups = constructionMarkups
+					self._wrapped = wrapped
+					self._pausedRender = false
+					self._markupIndices = {}
+					self._markupHistory = {}
+					self._currentWord = {}
+					self._ignoreIntervals = false
+					self._clearingRender = false
+					self._firstRowEntryIndex = nil
+					self._printerScheduler:Empty()
+					self._constructionScheduler:Empty()
+					self._containerDefaultAbsoluteSize = container.AbsoluteSize
+
+					for _, dataModule in ipairs(markupDataModules) do
+						if dataModule.type == "paired" then
+							self._constructionData.spans[dataModule.name] = {}
+
+							self:_CreateSpan(dataModule.name)
+						end
+					end
+					
+					local contentFolder = Instance.new("Folder", container)
+					contentFolder.Name = "HyperTextContent"
+					self._contentFolder = contentFolder
+					
+					local executionThread = coroutine.create(function()
+						self.rendering = true
+						self._constructing = true
+
+						local traceback : string?
+
+						local success = xpcall(
+							function()
+								self:_CreateRow()
+								self:_ParseText()
+								self._constructionScheduler:Iterate()
+							end,
+							function(errmsg : any)
+								traceback = debug.traceback("Cancelled render due to a construction error: " .. tostring(errmsg) .. "\nTraceback:")
+							end
+						)
+						
+						self._constructing = false
+
+						if success and not constructOnly then
+							self._constructionScheduler:Iterate(nil, {
+								PARSER_APPEND_STRING_SCHEDULER_ID,
+								PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID
+							})
+
+							local currentWord = self._currentWord		
+
+							if currentWord then
+								local firstEntry = currentWord[1]
+
+								if firstEntry.word then
+									local first = utf8.graphemes(firstEntry.word.str)()
+
+									self._firstRowEntryIndex = firstEntry.word.index + first - 1
+								elseif firstEntry.selfClosingMarkup then
+									self._firstRowEntryIndex = firstEntry.selfClosingMarkup.index
+								end
+
+								self._currentWord = nil
+							end
+
+							local layout = Instance.new("UIListLayout", self._contentFolder)
+							layout.VerticalAlignment = constructionMarkups.verticalAlignment.value
+							layout.SortOrder = Enum.SortOrder.Name
+							self._layout = layout
+
+							success = xpcall(
+								function()
+									self:_OverflowCheck()
+									self:_MapConstructionData()
+									self:_InitSpanData()
+									self._printerScheduler:Iterate()
+								end,
+								function(errmsg : any)
+									traceback = debug.traceback("Render aborted due to an error: " .. tostring(errmsg) .. "\nTraceback:")
+								end
+							)
+							
+							self.onRenderEnded:Fire(self._ignoreIntervals)
+						end
+						
+						self.rendering = false
+
+						if not success then
+							error(traceback, 0)
+						end
+					end)
+
+					self._executionThread = executionThread
+
+					local success, errmsg = coroutine.resume(executionThread)
+
+					if not success then
+						warn(errmsg :: string .. renderTraceback)
+					end
+
+					if yield then
+						yieldWhile(function()
+							return self.rendering and self._renderId == renderId
+						end)
+					end
+				else
+					warn("Cannot render: object's container has an absolute height of 0\n" .. renderTraceback)
+				end
+			else
+				warn("Cannot render: object's container has an absolute width of 0\n" .. renderTraceback)
+			end
+		else
+			warn("Cannot render: object's container has an absolute size of 0, 0\n" .. renderTraceback)
+		end
+	else
+		warn("Cannot render: object is destroyed")
+	end
+end
+
+methods.CompleteRender = function(self : types.hyperTextClassObject)
+	local rendering = self.rendering
+	
+	if rendering then
+		self._ignoreIntervals = true
+
+		self:ResumeRender(true)
+	end
+end
+
+methods.PauseRender = function(self : types.hyperTextClassObject)
+	if self._waitMarkupThread then
+		task.cancel(self._waitMarkupThread)
+	end
+
+	self._pausedRender = true
+end
+
+methods.ResumeRender = function(
+	self : types.hyperTextClassObject,
+	_ignoreIntervalMarkupYield : boolean?
+)
+	local pausedRender = self._pausedRender
+	local executionThread = self._executionThread
+	local constructing = self._constructing
+
+	if _ignoreIntervalMarkupYield or pausedRender then
+		self._pausedRender = false
+		
+		if
+			executionThread
+			and not constructing
+			and coroutine.status(executionThread) == "suspended"
+			and (_ignoreIntervalMarkupYield or not self._yieldingFromIntervalMarkup)
+		then
+			local success, errmsg = coroutine.resume(
+				executionThread,
+				self._yieldingFromIntervalMarkup and 0 or nil
+			)
+
+			if not success then
+				warn(errmsg)
+			end
+		end
+	end
+end
+
+methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
+	local contentFolder = self._contentFolder
+
+	if contentFolder then
+		if self._executionThread then
+			task.cancel(self._executionThread)	
+		end
+		if self._waitMarkupThread then
+			task.cancel(self._waitMarkupThread)
+		end
+		
+		if self._cachedTypewriterSound then
+			self._cachedTypewriterSound:Stop()
+		end
+
+		self._nextTypewriterSfxTime = nil
+		self._pausedRender = false
+		self.rendering = false
+		
+		if not instant then
+			if self._clearingRender then
+				return
+			end
+			
+			self._clearingRender = true
+			self._ignoreIntervals = false
+			
+			local latestEndTime : number?
+			local renderId = self._renderId
+			
+			for _, entry in ipairs(self._printerData.rowEntries) do
+				if not entry.whitespace then
+					if entry.markups.clearInterval.value ~= 0 then
+						self:_YieldFromInterval(
+							entry.markups.clearInterval.value == "inherit"
+								and entry.markups.interval.value
+								or entry.markups.clearInterval.value :: number,
+							entry.index
+						)
+
+						local clearingRender = self._clearingRender
+						if not clearingRender or self._renderId ~= renderId then
+							return
+						end
+					end
+					
+					for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+						if dataModule.type == "paired" and dataModule.applyOnClear then
+							if dataModule.onPrint and dataModule.validate(entry.markups) then
+								if entry.character:IsA("ImageLabel") and not dataModule.applyToImages then
+									continue
+								end
+								
+								local clearingDuration = dataModule.getClearingDuration(entry.markups)
+								local endTime = os.clock() + clearingDuration
+								
+								latestEndTime = latestEndTime and math.max(latestEndTime, endTime) or endTime
+								
+								local spans = util.indexCaseInsensitive(
+									self._constructionData.spans,
+									dataModule.name
+								)
+								local span : types.spanData
+
+								for _, candidate in ipairs(spans) do
+									if table.find(candidate.rowEntryIndices, entry.index) then
+										span = candidate
+
+										break
+									end
+								end									
+								
+								local spanData : types.onPrintMarkupSpanData = {
+									characterSize = Vector2.new(entry.constructionDataRowEntry.width, entry.constructionDataRowEntry.height),
+									characterPosition = self:_GetRowEntryPosition(entry.index),
+									spanSize = span.size,
+									spanPosition = span.position,
+								}
+
+								dataModule.onPrint(
+									self,
+									entry,
+									spanData,
+									updater,
+									true
+								)
+							end
+						end
+					end
+				end
+			end
+			
+			if latestEndTime and os.clock() < latestEndTime then
+				task.wait(latestEndTime - os.clock())
+				
+				local clearingRender = self._clearingRender
+				if not clearingRender or self._renderId ~= renderId then
+					return
+				end
+			end
+		end
+		
+		contentFolder:Destroy()
+		
+		table.clear(self._transformRowEntries)
+		
+		for _, v in pairs(self._printerData :: {[string] : {any}}) do
+			table.clear(v)
+		end
+		
+		self._renderId = nil
+		self._clearingRender = false
+	end
+end
+
+methods.GetConstructionSize = function(self : types.hyperTextClassObject) : Vector2?
+	local maxWidth = 0
+	local accumulatedHeight = 0
+	
+	for _, row in ipairs(self._constructionData.rows) do
+		accumulatedHeight += row.height
+		
+		if row.width > maxWidth then
+			maxWidth = row.width
+		end
+	end
+	
+	return self._constructionScheduler.index and Vector2.new(maxWidth, accumulatedHeight) or nil
+end
+
+methods.GetPlainText = function(self : types.hyperTextClassObject) : string?
+	local index = self._constructionScheduler.index
+	
+	if index then
+		self._constructionScheduler:Iterate(nil, {
+			PARSER_APPEND_STRING_SCHEDULER_ID,
+			PARSER_APPEND_WHITESPACE_SCHEDULER_ID
+		})
+		
+		local text = ""
+		
+		if self._currentWord then
+			for _, data in ipairs(self._currentWord) do
+				if data.word then
+					text ..= data.word.str
+				end
+			end
+		end
+		
+		self._currentWord = nil
+		
+		return text
+	end
+	
+	return nil
+end
+
+methods.Destroy = function(self : types.hyperTextClassObject)
+	self._destroyed = true
+	
+	self:Clear(true)
+	
+	self._destroyCon:Disconnect()
+	
+	if self._cachedTypewriterSound then
+		self._cachedTypewriterSound:Destroy()
+	end
+	
+	updater[self._rowEntriesTransformUpdaterId] = nil
+	
+	self.onRenderEnded:Destroy()
+end
+
+methods._GetProportionalSize = function(self : types.hyperTextClassObject, size : number) : (number, number)
+	local containerDefaultAbsoluteSize = self._containerDefaultAbsoluteSize
+	
+	if containerDefaultAbsoluteSize then
+		local scale = self._markups.scaleDimension.value == "X"
+			and (self._container.AbsoluteSize.X / containerDefaultAbsoluteSize.X)
+			or (self._container.AbsoluteSize.Y / containerDefaultAbsoluteSize.Y)
+		
+		return size * scale, scale
+			
+	end
+	
+	return 0, 1
+end
+
+methods._CreateRow = function(self : types.hyperTextClassObject, markups : types.markups?)
+	table.insert(self._constructionData.rows, {
+		height = markups and markups.size.value or 0,
+		width = 0,
+	})
+end
+
+methods._OverflowCheck = function(self : types.hyperTextClassObject)
+	local size = self:GetConstructionSize()
+	local text = self._text
+	local renderTraceback = self._renderTraceback
+	
+	if size and text and renderTraceback then
+		if 
+			size.X > self._container.AbsoluteSize.X
+			and not (
+				self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+					and self._markups.scaleDimension.value == "Y"
+					and self._container.AutomaticSize == Enum.AutomaticSize.X
+			)
+		then
+			warn(
+				"Text \"" .. string.sub(text, 1, config.DEBUG_OVERFLOW_MAX_TEXT_LENGTH)
+					.. (#text > config.DEBUG_OVERFLOW_MAX_TEXT_LENGTH and "..." or "")
+					.. "\" horizontally overflowed from its container during construction\n"
+					.. renderTraceback
+			)
+		end
+		
+		if 
+			size.Y > self._container.AbsoluteSize.Y
+			and not (
+				self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+					and self._markups.scaleDimension.value == "X"
+					and self._container.AutomaticSize == Enum.AutomaticSize.Y
+			)
+		then
+			warn(
+				"Text \"" .. string.sub(text, 1, config.DEBUG_OVERFLOW_MAX_TEXT_LENGTH)
+					.. (#text > config.DEBUG_OVERFLOW_MAX_TEXT_LENGTH and "..." or "")
+					.. "\" vertically overflowed from its container during construction\n"
+					.. renderTraceback
+			)
+		end
+	end
+end
+
+methods._CreateRowInstance = function(
+	self : types.hyperTextClassObject,
+	height : number,
+	index : number
+) : Frame
+	local proportionalHeight = self:_GetProportionalSize(height)
+	
+	local row = Instance.new("Frame", self._contentFolder)
+	row.SizeConstraint = self._markups.sizeConstraint.value
+	row.Size = UDim2.fromScale(
+		(
+			self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+			or self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+		) 
+			and 1
+			or self._container.AbsoluteSize.X / self._container.AbsoluteSize.Y,
+		self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX 
+			and proportionalHeight / self._container.AbsoluteSize.X
+			or proportionalHeight / self._container.AbsoluteSize.Y
+	)
+	row.BackgroundTransparency = 1
+	row.ZIndex = self._markups.ZIndex.value
+
+	local digits = #tostring(#self._constructionData.rows)
+	row.Name = string.format("Row%0" .. digits .. "d", index)
+	
+	local layout = Instance.new("UIListLayout", row)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.HorizontalAlignment = self._markups.horizontalAlignment.value
+
+	return row
+end
+
+methods._CreateRowEntryContainer = function(
+	self : types.hyperTextClassObject,
+	printerData : types.printerDataRowEntry | types.printerDataRowEntry<false> | types.printerDataRowEntry<true>,
+	suffix : string
+) : Frame
+	local proportionalWidth, scale = self:_GetProportionalSize(printerData.constructionDataRowEntry.width)
+	local proportionalHeight = printerData.constructionDataRowEntry.height * scale
+
+	local container = Instance.new(
+		"Frame",
+		printerData.row
+	)
+	container.Name = suffix .. "Container"
+	container.BackgroundTransparency = 1
+	container.ZIndex = printerData.markups.ZIndex.value
+	container.SizeConstraint = printerData.markups.sizeConstraint.value
+	container.LayoutOrder = printerData.index
+	container.BorderSizePixel = 0
+	container.Size = UDim2.fromScale(
+		(
+			printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+				or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+		) and proportionalWidth / printerData.row.AbsoluteSize.X
+			or proportionalWidth / printerData.row.AbsoluteSize.Y,
+		(
+			printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+				or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+		) and proportionalHeight / printerData.row.AbsoluteSize.Y
+			or proportionalHeight / printerData.row.AbsoluteSize.X
+	)
+
+	local upperContainer =  #printerData.containers > 0
+		and printerData.containers[#printerData.containers]
+		or printerData.character
+
+	if upperContainer then
+		upperContainer.Size = UDim2.fromScale(1, 1)
+		upperContainer.SizeConstraint = Enum.SizeConstraint.RelativeXY
+		upperContainer.Parent = container
+	end
+
+	table.insert(printerData.containers, container)
+
+	return container	
+end
+
+methods._YieldFromInterval = function(
+	self : types.hyperTextClassObject,
+	duration : number,
+	index : number
+)
+	local ignoreIntervals = self._ignoreIntervals
+	local firstEntryRowIndex = self._firstRowEntryIndex
+	
+	if
+		duration ~= 0
+		and firstEntryRowIndex
+		and not ignoreIntervals
+		and index > firstEntryRowIndex
+	then
+		self._yieldingFromIntervalMarkup = true
+		
+		yieldWhile(function(yieldDuration)
+			return not self._ignoreIntervals and yieldDuration < duration
+		end)
+		
+		self._yieldingFromIntervalMarkup = false
+	end
+end
+
+methods._Print = function(
+	self : types.hyperTextClassObject,
+	currentWord : types.word,
+	rowIndex : number,
+	performAsWhiteSpace : boolean?
+)
+	local text = self._text
+	
+	if text then
+		local rowData = self._constructionData.rows[rowIndex]
+		local row : Frame
+		
+		if not rowData.instance then
+			row = self:_CreateRowInstance(rowData.height, rowIndex)
+			
+			rowData.instance = row
+		else
+			row = rowData.instance
+		end
+		
+		for _, data in ipairs(currentWord) do
+			if data.word then
+				for first, last in utf8.graphemes(data.word.str) do
+					if data.word.splitCharacterIndex and last == #data.word.str then
+						break
+					end
+					
+					local baseEntry = self._constructionData.rowEntries[data.word.index + first - 1]
+						:: types.constructionDataRowEntry<false>
+					local dashEntry = self._constructionData.rowEntries[data.word.index + first - 1 + .5]
+						:: types.constructionDataRowEntry<false>
+										
+					for i, entry in ipairs({baseEntry, dashEntry}) do
+						self:_YieldFromInterval(
+							data.word.markups.interval.value,
+							data.word.index + first - 1
+						)
+						
+						local proportionalWidth, scale = self:_GetProportionalSize(entry.height * entry.heightToWidthRatio)
+						local proportionalHeight = entry.height * scale
+
+						if self._pausedRender then
+							coroutine.yield()
+						end
+						
+						local character = i == 1
+							and string.sub(data.word.str, first, last)
+							or string.sub(data.word.str, last + 1, last + 1)
+						local entryIndex = i == 1
+							and data.word.index + first - 1
+							or data.word.index + first - 1 + .5
+
+						local textLabel = Instance.new("TextLabel", row)
+						textLabel.BorderSizePixel = 0
+						textLabel.LayoutOrder = entryIndex
+						textLabel.RichText = true
+						textLabel.BackgroundTransparency = 1
+						textLabel.Text = character
+						textLabel.TextXAlignment = Enum.TextXAlignment.Left
+						textLabel.ZIndex = data.word.markups.ZIndex.value
+						textLabel:SetAttribute("DefaultTextSize", Vector2.new(
+							entry.height * entry.heightToWidthRatio,
+							entry.height
+						))
+						textLabel.SizeConstraint = data.word.markups.sizeConstraint.value
+						textLabel.Size = UDim2.fromScale(
+							(
+								data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+									or data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+							) and proportionalWidth / row.AbsoluteSize.X or proportionalWidth / row.AbsoluteSize.Y,
+							(
+								data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+									or data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+							) and proportionalHeight / row.AbsoluteSize.Y or proportionalHeight / row.AbsoluteSize.X
+						)
+						
+						textLabel:SetAttribute("DEBUG_HTWRatio", entry.heightToWidthRatio)
+						
+						local printerRowEntry : types.printerDataRowEntry<false> = {
+							character = textLabel,
+							row = row,
+							constructionDataRowEntry = entry :: types.constructionDataRowEntry<false>,
+							markups = data.word.markups,
+							index = entryIndex,
+							whitespace = performAsWhiteSpace,
+							
+							containers = {},
+							position = Vector2.zero,
+							rotation = 0,
+						}
+						
+						table.insert(self._printerData.rowEntries, printerRowEntry :: types.printerDataRowEntry)
+
+						local constraint = Instance.new("UITextSizeConstraint", textLabel)
+						constraint.MinTextSize = proportionalHeight
+						constraint.MaxTextSize = proportionalHeight
+						
+						local function resize(fromAbsoluteSize : boolean?)
+							local defaultTextSize = textLabel:GetAttribute("DefaultTextSize") :: Vector2
+							local _, scale = self:_GetProportionalSize(defaultTextSize.X)
+							local proportionalHeight = defaultTextSize.Y * scale
+							
+							constraint.MinTextSize = 0
+							
+							constraint.MaxTextSize = proportionalHeight
+							constraint.MinTextSize = math.clamp(proportionalHeight, 0, 100)
+							
+							textLabel.TextSize = proportionalHeight
+						end
+
+						textLabel:GetAttributeChangedSignal("DefaultTextSize"):Connect(resize)
+						
+						local connection = self._container:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+							resize(true)
+						end)
+						textLabel.Destroying:Once(function()
+							connection:Disconnect()
+						end)
+
+						if not performAsWhiteSpace then
+							for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+								if 
+									dataModule.type == "paired"
+									and dataModule.onPrint
+								then
+									local spans = util.indexCaseInsensitive(
+										self._constructionData.spans,
+										dataModule.name
+									)
+									local span : types.spanData
+
+									for _, candidate in ipairs(spans) do
+										if table.find(candidate.rowEntryIndices, entryIndex) then
+											span = candidate
+											
+											break
+										end
+									end							
+									
+									local spanData : types.onPrintMarkupSpanData = {
+										characterSize = Vector2.new(entry.width, entry.height),
+										characterPosition = self:_GetRowEntryPosition(entryIndex),
+										spanSize = span.size,
+										spanPosition = span.position,
+									}
+									
+									dataModule.onPrint(
+										self,
+										printerRowEntry :: types.printerDataRowEntry,
+										spanData,
+										updater,
+										false
+									)
+								end
+							end
+						end
+					end
+				end
+			elseif data.selfClosingMarkup then
+				for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+					if 
+						dataModule.type == "selfClosing"
+						and string.lower(dataModule.name) == string.lower(data.selfClosingMarkup.type_)
+						and dataModule.onPrint_
+					then
+						if dataModule.yieldFromIntervalOnPrint then
+							self:_YieldFromInterval(
+								data.selfClosingMarkup.markups.interval.value,
+								data.selfClosingMarkup.index
+							)
+							
+							if self._pausedRender then
+								coroutine.yield()
+							end
+						end
+						
+						dataModule.onPrint_(
+							self,
+							data.selfClosingMarkup.markups,
+							data.selfClosingMarkup.index,
+							row,
+							updater
+						)
+						
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
+methods._Construct = function(
+	self : types.hyperTextClassObject,
+	performAsWhitespace : boolean?
+)
+	local constructionMarkups = self._constructionMarkups
+	local schedulerIndex = self._constructionScheduler.index
+	local currentWord = self._currentWord
+	local containerDefaultAbsoluteSize = self._containerDefaultAbsoluteSize
+
+	if 
+		constructionMarkups
+		and currentWord
+		and schedulerIndex
+		and containerDefaultAbsoluteSize
+	then
+		local rowIndex = #self._constructionData.rows
+		local wrapped = self._wrapped
+
+		self._currentWord = nil
+
+		if wrapped then
+			local appends = 0
+			local rowData = self._constructionData.rows[rowIndex]
+			
+			local width = containerDefaultAbsoluteSize.X
+			local epsilon = math.max(1e-4, width * 1e-6)
+			local containerWidth = width + epsilon
+			
+			local function getSelfClosingMarkupSize(
+				type_ : string,
+				markups : types.markups
+			) : Vector2
+				for _, dataModule in ipairs(markupDataModules) do
+					if
+						dataModule.type == "selfClosing"
+						and string.lower(dataModule.name) == string.lower(type_)
+						and dataModule.getSize
+					then
+						return dataModule.getSize(self, markups)
+					end
+				end
+
+				error("Failed to get the size of self closing markup \"" .. type_ .. "\"", 0)
+			end
+
+			local splitEntryIndex : number?
+			local splitByteEnd : number?
+			local splitCharacterIndex : number?
+			local splitWithDash = false
+
+			while true do
+				local wordWidth = 0
+				local overflowed = false
+				local dashSplitEntryIndex : number?
+				local dashSplitByteEnd : number?
+				local dashSplitCharacterIndex : number?
+				local atomicSplitEntryIndex : number?
+				local preAtomicSplitEntryIndex : number?
+				local preAtomicSplitByteEnd : number?
+				local lastFittingEntryIndex : number?
+				local lastFittingByteEnd : number?
+
+				for i, data in ipairs(currentWord) do
+					if data.word then
+						for first, last in utf8.graphemes(data.word.str) do
+							local character = string.sub(data.word.str, first, last)
+							local size = data.word.markups.size.value
+							local maxTextBounds = util.fetchTextBounds(
+								character,
+								data.word.markups,
+								math.huge
+							)
+							local characterWidth = size * maxTextBounds.X / maxTextBounds.Y
+							
+							if rowData.width + wordWidth + characterWidth <= containerWidth then
+								wordWidth += characterWidth
+								lastFittingEntryIndex = i
+								lastFittingByteEnd = last
+
+								local dashMaxTextBounds = util.fetchTextBounds(
+									"-",
+									data.word.markups,
+									math.huge
+								)
+								local dashWidth = size * dashMaxTextBounds.X / dashMaxTextBounds.Y
+
+								if rowData.width + wordWidth + dashWidth <= containerWidth then
+									dashSplitEntryIndex = i
+									dashSplitByteEnd = last
+									dashSplitCharacterIndex = data.word.index + first - 1
+								end
+							else
+								overflowed = true
+
+								break
+							end
+						end
+					elseif data.selfClosingMarkup then
+						local markupSize = getSelfClosingMarkupSize(
+							data.selfClosingMarkup.type_,
+							data.selfClosingMarkup.markups
+						)
+						local markupWidth = markupSize.X
+
+						if rowData.width + wordWidth + markupWidth <= containerWidth then
+							wordWidth += markupWidth
+							lastFittingEntryIndex = i
+							lastFittingByteEnd = nil
+
+							if markupWidth > 0 then
+								atomicSplitEntryIndex = i
+							end
+						else
+							overflowed = true
+							preAtomicSplitEntryIndex = lastFittingEntryIndex
+							preAtomicSplitByteEnd = lastFittingByteEnd
+						end
+					end
+
+					if overflowed then
+						break
+					end
+				end
+
+				if not overflowed then
+					break
+				end
+				
+				if performAsWhitespace then
+					self:_CreateRow()
+
+					return
+				elseif
+					rowData.width > 0
+					and (
+						wordWidth < containerWidth * config.MAX_WORD_WIDTH_FRACTION
+						or not dashSplitEntryIndex
+							and not atomicSplitEntryIndex
+							and not preAtomicSplitEntryIndex
+					)
+				then
+					self:_CreateRow()
+
+					rowIndex += 1
+					rowData = self._constructionData.rows[rowIndex]
+				elseif preAtomicSplitEntryIndex then
+					splitEntryIndex = preAtomicSplitEntryIndex
+					splitByteEnd = preAtomicSplitByteEnd
+					splitCharacterIndex = nil
+					splitWithDash = false
+
+					break
+				elseif
+					dashSplitEntryIndex
+					and (
+						not atomicSplitEntryIndex
+						or dashSplitEntryIndex > atomicSplitEntryIndex
+					)
+				then
+					splitEntryIndex = dashSplitEntryIndex
+					splitByteEnd = dashSplitByteEnd
+					splitCharacterIndex = dashSplitCharacterIndex
+					splitWithDash = true
+
+					break
+				elseif atomicSplitEntryIndex then
+					splitEntryIndex = atomicSplitEntryIndex
+					splitByteEnd = nil
+					splitCharacterIndex = nil
+					splitWithDash = false
+
+					break
+				else
+					error("Container's width is too small for the first character and dash to be printed", 0)
+				end
+			end
+
+			if splitEntryIndex then
+				local splitData = currentWord[splitEntryIndex]
+				local splitWord = splitData and splitData.word
+
+				if splitWord then
+					if not splitByteEnd then
+						error("Failed to split the current word at a text entry", 0)
+					end
+
+					local originalString = splitWord.str
+					local remainder = string.sub(originalString, splitByteEnd + 1)
+					local remainderIndex = splitWord.index + splitByteEnd
+					local remainderMarkups = splitWord.markups
+
+					splitWord.str = string.sub(originalString, 1, splitByteEnd)
+
+					if splitWithDash then
+						splitWord.str ..= "-"
+						splitWord.splitCharacterIndex = splitCharacterIndex
+					else
+						splitWord.splitCharacterIndex = nil
+					end
+
+					if remainder ~= "" then
+						self._constructionScheduler:Insert(schedulerIndex + 1 + appends, function()
+							self:_AppendStringToCurrentWord(
+								remainder,
+								remainderIndex,
+								remainderMarkups
+							)
+						end)
+
+						appends += 1
+					end
+					
+					self:_CreateRow()
+				elseif splitData.selfClosingMarkup then
+					self:_CreateRow()
+				elseif not splitData then
+					error("Failed to split the current word at a valid entry", 0)
+				end
+
+				local currentWordLength = #currentWord
+
+				for i = splitEntryIndex + 1, currentWordLength do
+					local data = currentWord[i]
+					currentWord[i] = nil
+
+					if data.word then
+						local wordString = data.word.str
+						local wordIndex = data.word.index
+						local wordMarkups = data.word.markups
+
+						self._constructionScheduler:Insert(schedulerIndex + 1 + appends, function()
+							self:_AppendStringToCurrentWord(wordString, wordIndex, wordMarkups)
+						end)
+
+						appends += 1
+					elseif data.selfClosingMarkup then
+						local markupType = data.selfClosingMarkup.type_
+						local markupIndex = data.selfClosingMarkup.index
+						local markupMarkups = data.selfClosingMarkup.markups
+
+						self._constructionScheduler:Insert(schedulerIndex + 1 + appends, function()
+							self:_AppendSelfClosingMarkupToCurrentWord(
+								markupType,
+								markupIndex,
+								markupMarkups
+							)
+						end)
+
+						appends += 1
+					end
+				end
+
+				self._constructionScheduler:Insert(schedulerIndex + 1 + appends, function()
+					self:_Construct()
+				end)
+			end
+		end
+
+		local rowData = self._constructionData.rows[rowIndex]
+
+		for _, data in ipairs(currentWord) do
+			if data.word then
+				for first, last in utf8.graphemes(data.word.str) do
+					if data.word.splitCharacterIndex and last == #data.word.str then
+						break
+					end
+					
+					local character = string.sub(data.word.str, first, last)
+					local size = data.word.markups.size.value
+					local maxTextBounds = util.fetchTextBounds(
+						character,
+						data.word.markups,
+						math.huge
+					)
+					local heightToWidthRatio = maxTextBounds.X / maxTextBounds.Y
+					local characterWidth = size * heightToWidthRatio
+					
+					local entryData : types.constructionDataRowEntry = {
+						str = character,
+						height = size,
+						width = characterWidth,
+						rowIndex = rowIndex,
+						heightToWidthRatio = heightToWidthRatio,
+					}
+					self._constructionData.rowEntries[data.word.index + first - 1] = entryData
+					rowData.width += characterWidth
+
+					if 
+						data.word.splitCharacterIndex
+						and data.word.splitCharacterIndex == data.word.index + first - 1
+					then
+						for _, spans in pairs(self._constructionData.spans) do
+							for _, spanData in pairs(spans) do
+								local index = table.find(spanData.rowEntryIndices, data.word.splitCharacterIndex)
+								
+								if index then
+									table.insert(
+										spanData.rowEntryIndices,
+										index + 1,
+										data.word.splitCharacterIndex + .5
+									)
+								end
+							end
+						end
+						
+						local dashMaxTextBounds = util.fetchTextBounds(
+							"-",
+							data.word.markups,
+							math.huge
+						)
+						heightToWidthRatio = dashMaxTextBounds.X / dashMaxTextBounds.Y
+						characterWidth = size * heightToWidthRatio
+						entryData = table.clone(entryData)
+						
+						entryData.width = characterWidth
+						entryData.str = "-"
+						entryData.heightToWidthRatio = heightToWidthRatio
+						
+						self._constructionData.rowEntries[data.word.splitCharacterIndex + .5] = entryData
+						rowData.width += characterWidth
+					end
+
+					if size > rowData.height then
+						rowData.height = size
+					end
+				end
+			elseif data.selfClosingMarkup then
+				for _, dataModule in ipairs(markupDataModules) do
+					if 
+						dataModule.type == "selfClosing"
+						and string.lower(dataModule.name) == string.lower(data.selfClosingMarkup.type_)
+						and dataModule.getSize
+					then
+						local size = dataModule.getSize(self, data.selfClosingMarkup.markups)
+						
+						self._constructionData.rowEntries[data.selfClosingMarkup.index] = {
+							height = size.Y,
+							width = size.X,
+							rowIndex = rowIndex,
+						}
+						rowData.width += size.X
+
+						if size.Y > rowData.height then
+							rowData.height = size.Y
+						end
+					end
+				end
+			end
+		end
+
+		self._printerScheduler:Append(function()
+			self:_Print(currentWord, rowIndex, performAsWhitespace)
+		end)
+	end
+end
+
+methods._AppendSelfClosingMarkupToCurrentWord = function(
+	self : types.hyperTextClassObject,
+	type_ : string,
+	index : number,
+	markups : types.markups
+)
+	local currentWord = self._currentWord or {}
+
+	table.insert(
+		currentWord,
+		{
+			selfClosingMarkup = {
+				type_ = type_,
+				index = index,
+				markups = markups
+			}
+		}
+	)
+
+	self._currentWord = currentWord
+end
+
+methods._AppendSelfClosingMarkupToSpans = function(
+	self : types.hyperTextClassObject,
+	index : number
+)
+	for _, dataModule in ipairs(markupDataModules) do
+		if dataModule.type == "paired" then
+			local spans = util.indexCaseInsensitive(self._constructionData.spans, dataModule.name)
+
+			for i = #spans, 1, -1  do
+				local spanData = spans[i]
+
+				if not spanData.closed then
+					table.insert(spanData.rowEntryIndices, index)
+
+					break
+				end
+			end
+		end
+	end
+end
+
+methods._AppendStringToCurrentWord = function(
+	self : types.hyperTextClassObject,
+	str : string,
+	index : number,
+	markups : types.markups?
+)
+	local constructionMarkups = self._constructionMarkups
+
+	if constructionMarkups then
+		markups = markups or util.deepCopy(constructionMarkups)
+		local currentWord = self._currentWord or {}
+
+		table.insert(
+			currentWord,
+			{
+				word = {
+					str = str,
+					index = index,
+					markups = markups,
+				}
+			}
+		)
+
+		self._currentWord = currentWord
+	end
+end
+
+methods._AppendStringToSpans = function(
+	self : types.hyperTextClassObject,
+	str : string,
+	index : number
+)
+	for first, last in utf8.graphemes(str) do
+		for _, dataModule in ipairs(markupDataModules) do
+			if dataModule.type == "paired" then
+				local spans = util.indexCaseInsensitive(self._constructionData.spans, dataModule.name)
+				
+				for i = #spans, 1, -1  do
+					local spanData = spans[i]
+					
+					if not spanData.closed then
+						table.insert(spanData.rowEntryIndices, index + first - 1)
+						
+						break
+					end
+				end
+			end
+		end
+	end
+end
+
+methods._MapConstructionData = function(self : types.hyperTextClassObject)
+	local rows : types.mappedConstructionData = {}
+	
+	for i, entry in pairs(self._constructionData.rowEntries) do
+		if not rows[entry.rowIndex] then
+			local rowData = self._constructionData.rows[entry.rowIndex]
+			local positionY = 0
+			
+			for rowIndex, row in ipairs(self._constructionData.rows) do
+				if rowIndex < entry.rowIndex then
+					positionY += row.height
+				else
+					break
+				end
+			end
+
+			rows[entry.rowIndex] = {
+				height = rowData.height,
+				rowEntries = {},
+				positionY = positionY,
+				width = rowData.width,
+				rowEntryIndices = {},
+			}
+		end
+		
+		table.insert(rows[entry.rowIndex].rowEntries, {
+			str = entry.str,
+			width = entry.width,
+			height = entry.height,
+			rowIndex = entry.rowIndex,
+			index = i,
+			positionX = 0,
+		})
+		table.insert(rows[entry.rowIndex].rowEntryIndices, i)
+	end
+	
+	for rowIndex, row in pairs(rows) do
+		local offsetX = 0
+		
+		table.sort(row.rowEntries, function(
+			a : index<typeof(row.rowEntries), number>,
+			b : index<typeof(row.rowEntries), number>
+		)
+			return a.index < b.index
+		end)
+		
+		for 
+			i = (
+				self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
+					and #row.rowEntries
+					or 1
+			),
+			(
+				self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right 
+					and 1
+					or #row.rowEntries
+			),
+			(
+				self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
+					and -1
+					or 1
+			)
+		do
+			local entry = row.rowEntries[i]
+
+			local positionX = self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Left
+				and offsetX
+				or self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
+				and self._container.AbsoluteSize.X - offsetX - entry.width
+				or row.width > 0 
+				and (
+					offsetX > 0
+					and (offsetX / row.width - .5) * row.width + self._container.AbsoluteSize.X / 2
+					or self._container.AbsoluteSize.X / 2 - row.width / 2
+				)
+				or self._container.AbsoluteSize.X / 2
+
+			entry.positionX = positionX
+			offsetX += entry.width
+		end
+	end
+
+	self._mappedConstructionData = rows
+end
+
+methods._InitSpanData = function(self : types.hyperTextClassObject)
+	local mappedConstructionData = self._mappedConstructionData
+	
+	if mappedConstructionData then
+		for _, spans in pairs(self._constructionData.spans) do
+			for _, spanData in ipairs(spans) do
+				local spanRows : {[number] : index<types.mappedConstructionData, number>} = {}
+				local earliestEntryPos = math.huge
+				local lastestEntryPosAndWidth = -math.huge
+				
+				--TODO: fix this crap by making it indexable
+				for _, index in ipairs(spanData.rowEntryIndices) do
+					for _, row in pairs(mappedConstructionData) do
+						if table.find(row.rowEntryIndices, index) then
+							if not table.find(spanRows, row) then
+								table.insert(spanRows, row)
+
+								for _, entry in ipairs(row.rowEntries) do
+									if table.find(spanData.rowEntryIndices, entry.index) then
+										if entry.positionX < earliestEntryPos then
+											earliestEntryPos = entry.positionX
+										end
+										if entry.positionX + entry.width > lastestEntryPosAndWidth then
+											lastestEntryPosAndWidth = entry.positionX + entry.width
+										end
+									end
+								end
+							end
+
+							break
+						end
+					end
+				end
+
+				if #spanRows > 0 then
+					local height = 0
+
+					if #spanRows == 1 then
+						local tallestEntryHeight = 0
+
+						for _, entry in ipairs(spanRows[1].rowEntries) do
+							if 
+								entry.height > tallestEntryHeight
+								and table.find(spanData.rowEntryIndices, entry.index)
+							then
+								tallestEntryHeight = entry.height
+							end
+						end
+
+						height = tallestEntryHeight
+					elseif #spanRows > 1 then
+						local lastRow = spanRows[#spanRows]
+						local firstRow = spanRows[1]
+						local distance = (lastRow.positionY + lastRow.height / 2) - (firstRow.positionY + firstRow.height / 2)
+
+						for _, row in ipairs({lastRow, firstRow}) do
+							local tallestEntryHeight = 0
+
+							for _, entry in ipairs(row.rowEntries) do
+								if 
+									entry.height > tallestEntryHeight
+									and table.find(spanData.rowEntryIndices, entry.index)
+								then
+									tallestEntryHeight = entry.height
+								end
+							end
+
+							height += tallestEntryHeight / 2
+						end	
+
+						height += distance
+					end
+
+					local firstRow = spanRows[1]
+					local firstRowTallestEntryHeight = 0
+
+					for _, entry in ipairs(firstRow.rowEntries) do
+						if 
+							entry.height > firstRowTallestEntryHeight
+							and table.find(spanData.rowEntryIndices, entry.index)
+						then
+							firstRowTallestEntryHeight = entry.height
+						end			
+					end
+
+					spanData.position = Vector2.new(
+						earliestEntryPos,
+						firstRow.positionY + firstRow.height / 2 - firstRowTallestEntryHeight / 2
+					)
+					spanData.size = Vector2.new(lastestEntryPosAndWidth - earliestEntryPos, height)
+				end
+			end
+		end
+	end
+end
+
+methods._GetRowEntryPosition = function(
+	self : types.hyperTextClassObject,
+	index : number
+) : Vector2
+	if self._mappedConstructionData then
+		for _, row in pairs(self._mappedConstructionData) do
+			for _, entry in ipairs(row.rowEntries) do
+				if entry.index == index then
+					return Vector2.new(entry.positionX, row.positionY + row.height / 2 - entry.height / 2)
+				end
+			end
+		end
+	end
+
+	error("row entry index not found in construction data", 0)
+end
+
+methods._CreateSpan = function(self : types.hyperTextClassObject, type_ : string)
+	local span = util.indexCaseInsensitive(self._constructionData.spans, type_)
+	
+	table.insert(span, {
+		rowEntryIndices = {},
+		position = Vector2.zero,
+		size = Vector2.zero,
+	})
+end
+
+methods._CloseLastSpan = function(self : types.hyperTextClassObject, type_ : string)
+	local spans = util.indexCaseInsensitive(self._constructionData.spans, type_)
+	
+	for i = #spans, 1, -1 do
+		local span = spans[i]
+		
+		if not span.closed then
+			span.closed = true
+			
+			break
+		end
+	end
+end
+
+methods._ParseAttrs = function(
+	self : types.hyperTextClassObject,
+	i : number,
+	markupValueEndPos : number,
+	tagEndPos : number,
+	markupValue : string?,
+	markupAttrs : types.dataModuleMarkupAttrs,
+	markupValuesAttrs : types.dataModuleMarkupValueAttrs
+) : {{attr : string, schemaAttr : string, value : any, markupValue : string?}}
+	local text = self._text
+	local renderTraceback = self._renderTraceback
+	local attrsValues : {{attr : string, schemaAttr : string, value : any, markupValue : string?}} = {}
+	
+	if 
+		text
+		and renderTraceback
+	then
+		if markupValueEndPos + 1 < tagEndPos then
+			local t = text
+
+			local j = markupValueEndPos + 1
+			while j < tagEndPos do
+				local _, attrTypeStartPos = string.find(t, "%S", j)
+				local attrTypeEndPos = string.match(t, "[^>=%s]+()", j) -- captures index of first whitespace or > or = 
+				local attrValueEndPos = string.match(t, "[^>%s]+()", j) -- captures index of first whitespace or > 
+
+				if 
+					attrTypeEndPos
+					and attrValueEndPos
+					and attrTypeStartPos
+					and attrTypeStartPos < tagEndPos
+				then
+					if attrTypeEndPos < attrValueEndPos - 1 then
+						local attrType = 
+							string.sub(
+								t,
+								attrTypeStartPos,
+								attrTypeEndPos - 1
+							)
+						local attrValue = string.sub(t, attrTypeEndPos + 1, attrValueEndPos - 1)
+						local markupValueAttrs = markupValue
+							and util.safeIndexCaseInsensitive(markupValuesAttrs, markupValue)
+						local markupAttributes = markupAttrs
+						
+						local attr, schemaAttrType
+						if markupAttributes then
+							attr, schemaAttrType = util.safeIndexCaseInsensitive(markupAttributes, attrType)
+						end
+						if markupValueAttrs and not attr and not schemaAttrType then
+							attr, schemaAttrType = util.safeIndexCaseInsensitive(markupValueAttrs, attrType)
+						end
+						
+						if attr and schemaAttrType then
+							local fromMarkupValue = markupValueAttrs and 
+								util.safeIndexCaseInsensitive(markupValueAttrs, attrType) and markupValue
+							local alreadyDefined = false
+							
+							for _, v in ipairs(attrsValues) do
+								if 
+									string.lower(v.attr) == string.lower(attrType)
+									and (v.markupValue and string.lower(v.markupValue)) == (fromMarkupValue and string.lower(fromMarkupValue))
+								then
+									alreadyDefined = true
+
+									break
+								end
+							end
+							
+							if not alreadyDefined then
+								local deleteAttr = attrValue == config.DELETE_MARKUP_VALUE_SYNTAX
+								
+								if (deleteAttr and attr.unrequired) or not deleteAttr then
+									local success : boolean
+									local convertedValue : any
+									
+									if deleteAttr then
+										success = true
+									else
+										success, convertedValue = pcall(attr.convert, attrValue)
+									end
+									
+									if success then
+										table.insert(attrsValues, {
+											attr = attrType,
+											schemaAttr = schemaAttrType,
+											value = convertedValue,
+											markupValue = fromMarkupValue,
+										})
+									else
+										warn(
+											"Failed to parse attribute \""
+												.. string.sub(
+													t,
+													attrTypeStartPos,
+													attrValueEndPos - 1
+												)
+												.. "\" of tag \"" .. string.sub(t, i, tagEndPos) 
+												.. "\": " .. convertedValue
+												.. "\n" .. renderTraceback
+										)
+									end
+								else
+									warn(
+										"Failed to parse attribute \""
+											.. string.sub(
+												t,
+												attrTypeStartPos,
+												attrValueEndPos - 1
+											)
+											.. "\" of tag \"" .. string.sub(t, i, tagEndPos) 
+											.. "\": this attribute cannot be deleted"
+											.. "\n" .. renderTraceback
+									)
+								end
+							else
+								warn(
+									"Failed to parse attribute \""
+										.. string.sub(
+											t,
+											attrTypeStartPos,
+											attrValueEndPos - 1
+										)
+										.. "\" of tag \"" .. string.sub(t, i, tagEndPos) 
+										.. "\": this attribute has already been defined\n"
+										.. renderTraceback
+								)
+							end
+						else
+							warn(
+								"Failed to parse attribute \""
+									.. string.sub(
+										t,
+										attrTypeStartPos,
+										attrValueEndPos - 1
+									)
+									.. "\" of tag \"" .. string.sub(t, i, tagEndPos) 
+									.. "\": \"".. attrType .."\" is not a valid attribute\n"
+									.. renderTraceback
+							)
+						end
+					else
+						warn(
+							"Failed to parse attribute \""
+								.. string.sub(
+									t,
+									attrTypeStartPos,
+									attrTypeEndPos - 1
+								)
+								.. "\" of tag \"" .. string.sub(t, i, tagEndPos) 
+								.. "\": no assigned value found\n"
+								.. renderTraceback
+						)
+					end
+
+					j = attrValueEndPos + 1
+				else
+					j = tagEndPos
+				end
+			end
+		end
+	end
+	
+	return attrsValues
+end
+
+methods._ParseText = function(self : types.hyperTextClassObject)
+	local text = self._text
+	local renderTraceback = self._renderTraceback
+	
+	if
+		text
+		and renderTraceback
+	then
+		local i = 1
+		local t = text
+		local markupHistory : {string} = {}
+		
+		while i <= #t do
+			local i_local = i
+			local char = string.sub(t, i, i)
+			
+			if char ~= "<" and not string.match(char, "%s") then
+				local word, endPos = string.match(t, "([^<%s]+)()", i) -- captures string from i to a whitespace or < 
+				if word then
+					self._constructionScheduler:Append(function()
+						self:_AppendStringToCurrentWord(word, i_local)
+					end, PARSER_APPEND_STRING_SCHEDULER_ID)
+					self._constructionScheduler:Append(function()
+						self:_AppendStringToSpans(word, i_local)
+					end)
+				end
+				
+				i = endPos or #t
+			elseif string.match(char, "%s") then
+				self._constructionScheduler:Append(function()
+					self:_Construct()
+				end)
+				self._constructionScheduler:Append(function()
+					self:_AppendStringToCurrentWord(char, i_local)
+				end, PARSER_APPEND_WHITESPACE_SCHEDULER_ID)
+				self._constructionScheduler:Append(function()
+					self:_Construct(true)
+				end)
+				
+				i += 1
+			elseif char == "<" then
+				if string.sub(t, i + 1, i + 1) ~= "/" then
+					local typeEndPos = string.match(t, "[^=>%s]+()", i) -- captures index of first whitespace or > or =
+					local valueEndPos = string.match(t, "[^>%s]+()", i) -- captures index of first whitespace or >
+					local _, tagEndPos = string.find(t, ">", i)
+
+					if tagEndPos and valueEndPos and typeEndPos then
+						local markupType = string.sub(t, i + 1, typeEndPos - 1)
+						local markupValue = typeEndPos and typeEndPos < valueEndPos - 1
+							and string.sub(t, typeEndPos + 1, valueEndPos - 1)
+							or nil
+						
+						for j, dataModule in ipairs(markupDataModules) do
+							if string.lower(dataModule.name) == string.lower(markupType) then
+								if typeEndPos < tagEndPos then
+									if dataModule.type == "paired" then
+										local deleteMarkup = markupValue
+											and markupValue == config.DELETE_MARKUP_VALUE_SYNTAX
+										
+										if (deleteMarkup and dataModule.unrequired) or not deleteMarkup then
+											local success : boolean
+											local convertedValue : any
+
+											if deleteMarkup then
+												success = true
+												convertedValue = util.DELETE_SYNTAX
+											elseif markupValue then
+												success, convertedValue = pcall(dataModule.convert, markupValue)
+											end
+											
+											if success or not markupValue then
+												local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
+
+												table.insert(markupHistory, 1, markupType)
+												
+												self._constructionScheduler:Append(function()
+													self:_ApplyMarkup(markupType, convertedValue, attrsValues)
+													self:_CreateSpan(markupType)
+												end)
+											else
+												warn(
+													"Failed to parse tag \""
+														.. string.sub(t, i, tagEndPos) 
+														.. "\": " .. convertedValue
+														.. "\n" .. renderTraceback
+												)
+											end
+										elseif deleteMarkup then
+											warn(
+												"Failed to parse tag \""
+													.. string.sub(t, i, tagEndPos) 
+													.. "\": this markup cannot be deleted"
+													.. "\n" .. renderTraceback
+											)
+										end
+									elseif dataModule.type == "selfClosing" then
+										if markupValue then
+											local success, convertedValue = pcall(
+												dataModule.convert,
+												markupValue
+											)
+
+											if success then
+												local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
+												
+												if not dataModule.appendToCurrentWord then
+													self._constructionScheduler:Append(function()
+														self:_Construct()
+													end)
+												end
+												
+												self._constructionScheduler:Append(
+													function()
+														if self._constructionMarkups then
+															local markups = util.deepCopy(self._constructionMarkups)
+
+															util.updateMarkups(markups, markupType, convertedValue, attrsValues)
+
+															if not dataModule.appendToCurrentWord then
+																if dataModule.onConstruction then
+																	dataModule.onConstruction(
+																		self,
+																		markups,
+																		#self._constructionData.rows
+																	)
+																end
+															else
+																self:_AppendSelfClosingMarkupToCurrentWord(
+																	markupType,
+																	tagEndPos,
+																	markups
+																)
+															end
+														end
+													end,
+													dataModule.appendToCurrentWord
+														and PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID
+														or nil
+												)
+												self._constructionScheduler:Append(function()
+													self:_AppendSelfClosingMarkupToSpans(tagEndPos)
+												end)
+											else
+												warn(
+													"Failed to parse tag \""
+														.. string.sub(t, i, tagEndPos) 
+														.. "\": " .. convertedValue
+														.. "\n" .. renderTraceback
+												)
+											end
+										else
+											warn(
+												"Failed to parse tag \"" 
+													.. string.sub(t, i, tagEndPos)
+													.. "\": no assigned value found\n"
+													.. renderTraceback
+											)
+										end
+									end
+								else
+									warn(
+										"Failed to parse tag \"" 
+											.. string.sub(t, i, tagEndPos)
+											.. "\": no assigned value found\n"
+											.. renderTraceback
+									)
+								end
+								
+								break
+							elseif j == #markupDataModules then
+								warn(
+									"Failed to parse tag \"" 
+										.. string.sub(t, i, tagEndPos)
+										.. "\": \"".. markupType .."\" is not a valid tag\n"
+										.. renderTraceback
+								)
+							end
+						end
+
+						i = tagEndPos + 1
+					else
+						warn(
+							"Failed to parse tag \""
+								.. string.sub(t, i, #t)
+								.. "\": no closing angle bracket found\n"
+								.. renderTraceback
+						)
+
+						break
+					end
+				else
+					local _, tagEndPos = string.find(t, ">", i)
+
+					if tagEndPos then
+						local markupType = string.sub(t, i + 2, tagEndPos - 1)
+						
+						for j, dataModule in ipairs(markupDataModules) do
+							if dataModule.type == "paired" and string.lower(dataModule.name) == string.lower(markupType) then
+								if #markupHistory > 0 then
+									for k, v in ipairs(markupHistory) do
+										if string.lower(v) == string.lower(markupType) then
+											table.remove(markupHistory, k)
+											
+											self._constructionScheduler:Append(function()
+												self:_RemoveMarkup(markupType)
+												self:_CloseLastSpan(markupType)
+											end)
+
+											break
+										elseif k == #markupHistory then
+											warn(
+												"Failed to parse tag \"</"
+													.. markupType .. ">\": no opening tag found\n"
+													.. renderTraceback
+											)
+										end
+									end
+								else
+									warn(
+										"Failed to parse tag \"</"
+											.. markupType .. ">\": no opening tag found\n"
+											.. renderTraceback
+									)
+								end
+								
+								break
+							elseif j == #markupDataModules then
+								warn(
+									"Failed to parse tag \"</"
+										.. markupType .. ">\": \"" 
+										.. markupType .. "\" is not a valid tag\n"
+										.. renderTraceback
+								)
+							end
+						end
+						
+						i = tagEndPos + 1
+					else
+						local _, whitespacePos = string.find(t, "%s", i)
+						
+						warn(
+							"Failed to parse tag \""
+								.. string.sub(t, i, whitespacePos or #t)
+								.. "\": no closing angle bracket found\n"
+								.. renderTraceback
+						)
+
+						break
+					end
+				end
+			end
+		end
+		
+		self._constructionScheduler:Append(function()
+			self:_Construct()
+		end)
+	end
+end
+
+methods._ApplyMarkup = function(
+	self : types.hyperTextClassObject,
+	type_ : string,
+	value : any,
+	attrsValues : {{
+		attr : string,
+		schemaAttr : string,
+		value : any,
+		markupValue : string?,
+	}},
+	stackable : boolean?
+)
+	local constructionMarkups = self._constructionMarkups
+	
+	if self._markupHistory and constructionMarkups then
+		local previousMarkupValue, previousAttrsValues = util.updateMarkups(
+			constructionMarkups,
+			type_,
+			value,
+			attrsValues,
+			stackable
+		)
+		
+		table.insert(self._markupHistory, 1, {
+			type = type_,
+			value = previousMarkupValue,
+			attrsValues = previousAttrsValues,
+		})
+	end
+end
+
+methods._RemoveMarkup = function(
+	self : types.hyperTextClassObject,
+	type_ : string,
+	stackable : boolean?
+)
+	local constructionMarkups = self._constructionMarkups
+	
+	if self._markupHistory and constructionMarkups then
+		for i, v in ipairs(self._markupHistory) do
+			if string.lower(v.type) == string.lower(type_) then
+				util.updateMarkups(
+					constructionMarkups,
+					v.type,
+					v.value,
+					v.attrsValues,
+					stackable
+				)
+				
+				table.remove(self._markupHistory, i)
+				
+				break
+			end
+		end
+	end
+end
+
+RunService.Heartbeat:Connect(function(dt)
+	debug.profilebegin("HyperText Updater")
+	
+	for id, callback in pairs(updater) do
+		if updater[id] then
+			local success, errmsg = pcall(callback, dt)
+
+			if not success then
+				warn(errmsg :: string)
+				
+				updater[id] = nil
+			end
+		end
+	end
+
+	debug.profileend()
+end)
+
+return HyperText
