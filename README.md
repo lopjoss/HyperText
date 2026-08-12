@@ -743,7 +743,7 @@ A custom markup requires matching definitions in `Types`, `Config`, and a markup
 <details>
 <summary><code>1. Define the schema</code></summary>
 
-Add a key matching the markup name to the `markups` type in `Internal/Types.luau`.
+Add a key matching the markup name to the `markups` type in `Types.luau`.
 
 Give it `value`, `attributes`, and `valueAttributes` fields. Optional value and attribute types must include `nil`. `valueAttributes` is keyed by each markup value that has its own attributes.
 
@@ -763,7 +763,7 @@ pulse : {
 <details>
 <summary><code>2. Add the defaults</code></summary>
 
-Add the markup to `DEFAULT_MARKUPS` in `Internal/Config.luau`.
+Add the markup to `DEFAULT_MARKUPS` in `Config.luau`.
 
 The `value`, `attributes`, and `valueAttributes` tables must match `Types`. Provide defaults for every required attribute and value-specific attribute. Optional values and attributes can be omitted or set to `nil`.
 
@@ -782,7 +782,7 @@ pulse = {
 <details>
 <summary><code>3. Create the data module</code></summary>
 
-Add a `ModuleScript` below `Internal/Markups/Paired` or `Internal/Markups/SelfClosing`.
+Add a `ModuleScript` below `Markups/Paired` or `Markups/SelfClosing`.
 
 All descendant data modules are discovered automatically. Clone the closest existing markup when possible.
 
@@ -850,7 +850,7 @@ types.dataModule<
 - To apply the markup to inline images, set `applyToImages = true`, pass it as the third `dataModule` generic, and type the character as `TextLabel | ImageLabel`.
 - To run while text is being cleared, set `applyOnClear = true` and pass it as the fourth generic.
 - Clearing markups must implement `validate(markups) -> boolean`, `getClearingDuration(markups) -> number`, and `onPrint` with an additional `onClear` boolean.
-- If application order matters, add the markup name to `PRINT_PRIORITY` in `Internal/Config.luau`. Unlisted markups run first; listed markups then run from top to bottom.
+- If application order matters, add the markup name to `PRINT_PRIORITY` in `Config.luau`. Unlisted markups run first; listed markups then run from top to bottom.
 
 ### Self-closing markup behavior
 

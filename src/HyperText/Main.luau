@@ -15,11 +15,11 @@
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local util = require("./Internal/Util")
-local types = require("./Internal/Types")
-local config = require("./Internal/Config")
-local scheduler = require("./Internal/Scheduler")
-local signal = require("./Internal/Signal")
+local util = require("./Util")
+local types = require("./Types")
+local config = require("./Config")
+local scheduler = require("./Scheduler")
+local signal = require("./Signal")
 
 local updater : {[string] : (dt : number) -> ()} = {}
 local markupDataModules = util.getAllMarkupDataModules()
