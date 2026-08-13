@@ -1,7 +1,7 @@
 --!strict
 
 --[[
-	HyperText v4.1.3
+	HyperText v4.2.3
 
 	Made by @lopjoss
 
@@ -51,7 +51,7 @@ end
 	The GuiObject that will contain any rendered content. When it gets destroyed, the object gets destroyed too.
 
 	markups: markups?
-	A markups dict to be merged into the object's default markups. To delete a default markup, set its value to <code>HyperText.DELETE</code>.
+	Calls <code>:UpdateDefaultMarkups()</code> with the given markups dict if provided.
 	Obtained from calling <code>.newMarkups()</code>.
 ]]
 HyperText.new = function(
@@ -113,6 +113,19 @@ end
 ]]
 HyperText.newMarkups = function()
 	return util.getEmptyMarkups()
+end
+
+--[[
+	Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values
+]]
+HyperText.insertStackEntry = function<T>(
+	markup : types.stack<T>,
+	index : number
+) : T
+	local default = util.deepCopy(markup._entryDefaultValues)
+	table.insert(markup.stack, default)
+
+	return default
 end
 
 methods.UpdateDefaultMarkups = function(

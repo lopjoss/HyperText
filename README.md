@@ -48,7 +48,7 @@ General behavior:
 
 ### Paired markups
 
-<details open>
+<details>
 <summary><code>anim</code></summary>
 
 The animation of the rendered content that plays when actively rendering. This markup can be deleted.
@@ -618,7 +618,7 @@ The size constraint of the rendered content.
 
 ## API
 
-<details open>
+<details>
 <summary><code>.new(container, markups) : hyperTextClassObject</code></summary>
 
 Creates and returns a new HyperText object.
@@ -626,7 +626,7 @@ Creates and returns a new HyperText object.
 | Parameter | Type | Description |
 | --- | --- | --- |
 | `container` | `GuiObject` | The `GuiObject` that will contain any rendered content. When it gets destroyed, the object gets destroyed too. |
-| `markups` | `markups?` | A markups dict to be merged into the object's default markups. To delete a default markup, set its value to `HyperText.DELETE`. Obtained from calling `.newMarkups()`. |
+| `markups` | `markups?` | Calls `:UpdateDefaultMarkups()` with the given markups dict if provided. Obtained from calling `.newMarkups()`. |
 
 </details>
 
@@ -638,9 +638,33 @@ Returns a full markups shaped dict with values/attributes emptied to nil.
 </details>
 
 <details>
+<summary><code>.insertStackEntry(markup : types.stack<T>, index : number) : T</code></summary>
+
+Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values
+
+</details>
+
+<details>
 <summary><code>:UpdateDefaultMarkups(markups)</code></summary>
 
-Merges the given markups dict into the object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`.
+Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack arrays are sparse, meaning a removed entry will leave a gap):
+
+```luau
+local markups = HyperText.newMarkups()
+
+-- alter an entry by getting it from a stack at a specific index
+local entry = markups.emitImg.stack[1]
+if entry then
+    entry.value = 123
+end
+
+-- add to a stack at a specific index
+local entry = HyperText.insertStackEntry(markups.emitImg, 3)
+entry.value = 123
+
+-- remove from a stack
+markups.emitImg.stack[2] = HyperText.DELETE
+```
 
 | Parameter | Type | Description |
 | --- | --- | --- |

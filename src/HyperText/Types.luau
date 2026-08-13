@@ -314,19 +314,22 @@ type function createDataModule(
 		error("invalid markup name")
 	end
 
-	local indexer = markup:readindexer()	
-	
-	if indexer and indexer.result:is("table") then
-		markup = indexer.result
+	local isStackable = markup:readproperty(types.singleton("stack")) and true or false
+
+	if isStackable then
+		local entryType = markup:readproperty(types.singleton("_entryDefaultValues"))
+
+		if entryType then
+			markup = entryType
+		else
+			error("no default entry type found for stackable markup")
+		end
 	end
 	
 	local markupValue = markup:readproperty(types.singleton("value"))
 	local attrs = markup:readproperty(types.singleton("attributes"))
 	local valueAttrs = markup:readproperty(types.singleton("valueAttributes"))
 	
-	local stackableType = indexer and indexer.result:is("table")
-		and types.singleton(true)
-		or types.optional(types.singleton(false))
 	local unrequiredType = isOptional(markupValue)
 		and types.singleton(true)
 		or types.optional(types.singleton(false))
@@ -345,7 +348,6 @@ type function createDataModule(
 			{head = {required(markupValue)}}
 		),
 		[types.singleton("appendToCurrentWord")] = appendToCurrentWord,
-		[types.singleton("stackable")] = stackableType,
 		[types.singleton("unrequired")] = unrequiredType,
 		[types.singleton("applyToImages")] = applyToImagesType,
 		[types.singleton("applyOnClear")] = applyOnClearType,
@@ -354,6 +356,11 @@ type function createDataModule(
 	}
 	
 	if moduleType:value() == "paired" then
+		local stackableType = isStackable
+			and types.singleton(true)
+			or types.optional(types.singleton(false))
+
+		type_[types.singleton("stackable")] = stackableType
 		type_[types.singleton("onPrint")] = createDataModuleOnPrint(
 			applyToImages:value() and types.unknown or types.singleton(false),
 			applyOnClear:value() and types.boolean or nil,
@@ -640,7 +647,24 @@ export type hyperTextClassContent = {
 export type hyperTextClassMethods = {
 	UpdateDefaultMarkups : typeof(
 		--[[
-			Merges the given markups dict into the object's default markups. To delete a default markup or attribute, set its value to <code>HyperText.DELETE</code>.
+			Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to <code>HyperText.DELETE</code>. For stackable markups, the following operations can be done (note that stack arrays are sparse, meaning a removed entry will leave a gap):
+
+			```luau
+			local markups = HyperText.newMarkups()
+
+			-- alter an entry by getting it from a stack at a specific index
+			local entry = markups.emitImg.stack[1]
+			if entry then
+				entry.value = 123
+			end
+
+			-- add to a stack at a specific index
+			local entry = HyperText.insertStackEntry(markups.emitImg, 3)
+			entry.value = 123
+
+			-- remove from a stack
+			markups.emitImg.stack[2] = HyperText.DELETE
+			```
 
 			markups: markups
 			The dict, obtained from calling <code>.newMarkups().</code>
@@ -898,6 +922,7 @@ export type animValueAttrsConverters = createValueAttrConverters<animValueAttrs>
 export type flipbookAttrsConverts = createAttrConverters<flipbookAttrs>
 export type imgAttrsConverters = createAttrConverters<imgAttrs>
 type inherit<T> = T | "inherit"
+export type stack<T> = {stack : {[number] : T?}, _entryDefaultValues : T}
 export type markups = {
 	-- self closing tag markups
 	wait : {
@@ -1055,13 +1080,11 @@ export type markups = {
 		attributes : gradientAttrs,
 		valueAttributes : {},
 	},
-	emitImg : {
-		{
-			value : number?,
-			attributes : emitImgAttrs & flipbookAttrs,
-			valueAttributes : {},
-		}
-	},
+	emitImg : stack<{
+		value : number?,
+		attributes : emitImgAttrs & flipbookAttrs,
+		valueAttributes : {},
+	}>,
 	decode : {
 		value : boolean,
 		attributes : {
@@ -1108,26 +1131,24 @@ export type markups = {
 		valueAttributes : {},
 	},
 }
+export type markup = keyof<markups>
 export type markupIndexable = {
 	value : any,
-		attributes: {
-			[string]: any
-		},
-		valueAttributes: {
-			[string] : {
-				[string] : any
-			}
-		},
+	attributes: {
+		[string]: any
+	},
+	valueAttributes: {
+		[string] : {
+			[string] : any
+		}
+	},
+}
+export type stackableMarkupIndexable = {
+	stack : {[number] : markupIndexable?},
+	_entryDefaultvalues : markupIndexable,
 }
 export type markupsIndexable = {
-	[string] : {
-		markupIndexable
-	} | {
-		{
-			markupIndexable
-		}
-	}
+	[string] : markupIndexable | stackableMarkupIndexable
 }
-export type markup = keyof<markups>
 
 return module

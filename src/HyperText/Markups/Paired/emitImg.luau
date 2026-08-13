@@ -19,14 +19,14 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		spanData : types.onPrintMarkupSpanData,
 		updater : {[string] : (dt : number) -> ()}
 	)
-		for _, markups in ipairs(printerData.markups.emitImg) do
-			if markups.value then
+		for _, markup in pairs(printerData.markups.emitImg.stack) do
+			if markup and markup.value then
 				emitImage(
 					obj,
-					markups.value,
+					markup.value,
 					printerData,
 					printerData.markups,
-					markups.attributes,
+					markup.attributes,
 					updater
 				)
 			end

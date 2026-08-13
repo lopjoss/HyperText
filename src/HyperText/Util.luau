@@ -79,15 +79,23 @@ end
 util.getEmptyMarkups = function() : types.markups
 	local markups = util.deepCopy(config.DEFAULT_MARKUPS)
 
-	for _, v in pairs(markups :: types.markupsIndexable) do
-		v.value = nil
+	for _, markup in pairs(markups :: types.markupsIndexable) do
+		local isStackable = markup[1] and true or false
+		local stackableMarkup = isStackable and markup :: types.stackableMarkupIndexable
+		local markup = not isStackable and markup :: types.markupIndexable
 
-		for k, _ in pairs(v.attributes) do
-			v.attributes[k] = nil
-		end
-		for _, attrs in pairs(v.valueAttributes) do
-			for k, _ in pairs(attrs) do
-				attrs[k] = nil
+		if stackableMarkup then
+			table.clear(stackableMarkup.stack)
+		elseif markup then
+			markup.value = nil
+	
+			for k, _ in pairs(markup.attributes) do
+				markup.attributes[k] = nil
+			end
+			for _, attrs in pairs(markup.valueAttributes) do
+				for k, _ in pairs(attrs) do
+					attrs[k] = nil
+				end
 			end
 		end
 	end
@@ -150,88 +158,118 @@ util.mergeMarkups = function(
 	base : types.markups,
 	new : types.markups
 )
-	local dataModules = util.getAllMarkupDataModules()
-	
-	for markup, data in pairs(new :: types.markupsIndexable) do
-		if data.value ~= nil then
-			if data.value == util.DELETE_SYNTAX then
-				for _, dataModule in ipairs(dataModules) do
-					if dataModule.name == markup then
-						if dataModule.unrequired then
-							(base :: types.markupsIndexable)[markup].value = nil
-						else
-							warn(
-								debug.traceback(
-									"Failed to delete the \""
-										.. markup .. "\" markup: This markup cannot be deleted\nTraceback:"
-								)
-							)
-						end
-					end
-				end
+	local function updateBase(
+		markupName : string,
+		dataModule : types.dataModuleLoose,
+		baseMarkup : types.markupIndexable,
+		markup : types.markupIndexable
+	)
+		if markup.value == util.DELETE_SYNTAX then
+			if dataModule.unrequired then
+				baseMarkup.value = nil
 			else
-				(base :: types.markupsIndexable)[markup].value = data.value
+				warn(
+					debug.traceback(
+						"Failed to delete the \""
+							.. markupName .. "\" markup: This markup cannot be deleted\nTraceback:"
+					)
+				)
 			end
+		else
+			baseMarkup.value = markup.value
 		end
 
-		for attr, value in pairs(data.attributes) do
+		for attr, value in pairs(markup.attributes) do
 			if value ~= nil then
 				if value == util.DELETE_SYNTAX then
-					for _, dataModule in ipairs(dataModules) do
-						if dataModule.name == markup then
-							for dataModuleAttr, data in pairs(dataModule.attributes) do
-								if dataModuleAttr == attr then
-									if data.unrequired then
-										(base :: types.markupsIndexable)[markup].attributes[attr] = nil
-									else
-										warn(
-											debug.traceback(
-												"Failed to delete the \""
-													.. attr .. "\" attribute of the \""
-													.. markup .. "\" markup: This attribute cannot be deleted\nTraceback:"
-											)
-										)
-									end
-								end
+					for dataModuleAttr, data in pairs(dataModule.attributes) do
+						if dataModuleAttr == attr then
+							if data.unrequired then
+								baseMarkup.attributes[attr] = nil
+							else
+								warn(
+									debug.traceback(
+										"Failed to delete the \""
+											.. attr .. "\" attribute of the \""
+											.. markupName .. "\" markup: This attribute cannot be deleted\nTraceback:"
+									)
+								)
 							end
 						end
 					end
 				else
-					(base :: types.markupsIndexable)[markup].attributes[attr] = value
+					baseMarkup.attributes[attr] = value
 				end
 			end
 		end
-		for value, attrs in pairs(data.valueAttributes) do
+
+		for value, attrs in pairs(markup.valueAttributes) do
 			for attr, attrValue in pairs(attrs) do
 				if attrValue ~= nil then
 					if attrValue == util.DELETE_SYNTAX then
-						for _, dataModule in ipairs(dataModules) do
-							if dataModule.name == markup then
-								for dataModuleValue, dataModuleAttrs in pairs(dataModule.valueAttributes) do
-									if dataModuleValue == value then
-										for dataModuleAttr, data in pairs(dataModuleAttrs) do
-											if dataModuleAttr == attr then
-												if data.unrequired then
-													(base :: types.markupsIndexable)[markup].valueAttributes[value][attr] = nil
-												else
-													warn(
-														debug.traceback(
-															"Failed to delete the \""
-																.. attr .. "\" attribute of the \""
-																.. value .. "\" value of the \""
-																.. markup .. "\" markup: This attribute cannot be deleted\nTraceback:"
-														)
-													)
-												end
-											end
+						for dataModuleValue, dataModuleAttrs in pairs(dataModule.valueAttributes) do
+							if dataModuleValue == value then
+								for dataModuleAttr, data in pairs(dataModuleAttrs) do
+									if dataModuleAttr == attr then
+										if data.unrequired then
+											baseMarkup.valueAttributes[value][attr] = nil
+										else
+											warn(
+												debug.traceback(
+													"Failed to delete the \""
+														.. attr .. "\" attribute of the \""
+														.. value .. "\" value of the \""
+														.. markupName .. "\" markup: This attribute cannot be deleted\nTraceback:"
+												)
+											)
 										end
 									end
 								end
 							end
 						end
 					else
-						(base :: types.markupsIndexable)[markup].valueAttributes[value][attr] = attrValue
+						baseMarkup.valueAttributes[value][attr] = attrValue
 					end
+				end
+			end
+		end				
+	end
+
+	local dataModules = util.getAllMarkupDataModules()
+	
+	for markupName, markup in pairs(new :: types.markupsIndexable) do
+		for _, dataModule in ipairs(dataModules) do
+			local name = dataModule.name
+
+			if name == markupName then
+				local isStackable = markup[1] and true or false
+				local baseMarkup = not isStackable and (base :: types.markupsIndexable)[markupName] :: types.markupIndexable or nil
+				local stackableBaseMarkup = isStackable and (base :: types.markupsIndexable)[markupName] :: types.stackableMarkupIndexable or nil
+		
+				if stackableBaseMarkup and dataModule.type == "paired" then
+					markup = markup :: types.stackableMarkupIndexable
+		
+					for i = 1, #markup.stack do
+						local markupEntry = markup.stack[i]
+						local baseMarkupEntry = stackableBaseMarkup.stack[i]
+		
+						if markupEntry then
+							if markupEntry == util.DELETE_SYNTAX then
+								stackableBaseMarkup.stack[i] = nil
+							else
+								if baseMarkupEntry then
+									updateBase(markupName, dataModule, baseMarkupEntry, markupEntry)
+								else
+									local default = util.deepCopy(stackableBaseMarkup._entryDefaultvalues)
+									updateBase(markupName, dataModule, default, markupEntry)
+	
+									stackableBaseMarkup.stack[i] = default
+								end
+							end
+						end
+					end
+				elseif baseMarkup then
+					updateBase(markupName, dataModule, baseMarkup, markup :: types.markupIndexable)
 				end
 			end
 		end
@@ -243,22 +281,41 @@ util.updateMarkups = function(
 	type_ : string,
 	value : any,
 	attrsValues : {{attr : string, schemaAttr : string, value : any, markupValue : string?}},
-	stackable : boolean?
+	isStackable : boolean?
 ) : (any, {{attr : string, schemaAttr : string, value : any, markupValue : string?}})
 	local previousAttrsValues = {}
-	local base = base :: types.markupsIndexable
-	local markup = util.indexCaseInsensitive(base, type_)
-	local previousValue = markup.value == nil and util.DELETE_SYNTAX or markup.value
-	local attrs = markup.attributes
+	local markup = not isStackable and util.indexCaseInsensitive(base :: types.markupsIndexable, type_) :: types.markupIndexable?
+	local stackableMarkup = isStackable and util.indexCaseInsensitive(base :: types.markupsIndexable, type_) :: {types.markupIndexable}?
+	local stackableMarkupEntry : types.markupIndexable? = isStackable and value ~= util.DELETE_SYNTAX and {
+		value = value,
+		attributes = {},
+		valueAttributes = {},
+	} or nil
+	local previousValue : any
+
+	if stackableMarkup then
+		previousValue = #stackableMarkup > 0 and stackableMarkup[#stackableMarkup] or stackableMarkup
+	elseif markup then
+		previousValue = markup.value == nil and util.DELETE_SYNTAX or markup.value
+	end
+	-- local attrs = markup.attributes
 
 	if value ~= nil then
 		if value == util.DELETE_SYNTAX then
-			markup.value = nil
-		else
+			-- markup.value = nil
+			if stackableMarkup then
+				table.remove(stackableMarkup, #stackableMarkup)
+			elseif markup then
+				markup.value = nil
+			end
+		elseif stackableMarkup and stackableMarkupEntry then
+			table.insert(stackableMarkup, stackableMarkupEntry)
+		elseif markup then
 			markup.value = value
 		end
 	end
 
+	-- update stackableMarkupEntry's attributes and valueAttributes
 	for _, data in ipairs(attrsValues) do
 		if not data.markupValue then
 			local previousValue = util.safeIndexCaseInsensitive(attrs, data.attr)
