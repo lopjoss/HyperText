@@ -80,7 +80,7 @@ util.getEmptyMarkups = function() : types.markups
 	local markups = util.deepCopy(config.DEFAULT_MARKUPS)
 
 	for _, markup in pairs(markups :: types.markupsIndexable) do
-		local isStackable = markup[1] and true or false
+		local isStackable = markup.stack and true or false
 		local stackableMarkup = isStackable and markup :: types.stackableMarkupIndexable
 		local markup = not isStackable and markup :: types.markupIndexable
 
@@ -141,12 +141,14 @@ end
 util.getAllMarkupDataModules = function(exclude : {types.markup}?) : {types.dataModuleLoose}
 	local modules : {types.dataModuleLoose} = {}
 
-	for _, v in ipairs(script.Parent.Markups:GetDescendants()) do
-		if v:IsA("ModuleScript") and (not exclude or not table.find(exclude :: {string}, v.Name)) then
-			local module : types.dataModuleLoose? = util.safeRequire(v :: ModuleScript)
-
-			if module then
-				table.insert(modules, module)
+	for _, v in ipairs({script.Parent.Markups.Paired, script.Parent.Markups.SelfClosing}) do
+		for _, v in ipairs(v:GetChildren()) do
+			if v:IsA("ModuleScript") and (not exclude or not table.find(exclude :: {string}, v.Name)) then
+				local module : types.dataModuleLoose? = util.safeRequire(v :: ModuleScript)
+	
+				if module then
+					table.insert(modules, module)
+				end
 			end
 		end
 	end
@@ -242,7 +244,7 @@ util.mergeMarkups = function(
 			local name = dataModule.name
 
 			if name == markupName then
-				local isStackable = markup[1] and true or false
+				local isStackable = markup.stack and true or false
 				local baseMarkup = not isStackable and (base :: types.markupsIndexable)[markupName] :: types.markupIndexable or nil
 				local stackableBaseMarkup = isStackable and (base :: types.markupsIndexable)[markupName] :: types.stackableMarkupIndexable or nil
 		
@@ -260,7 +262,7 @@ util.mergeMarkups = function(
 								if baseMarkupEntry then
 									updateBase(markupName, dataModule, baseMarkupEntry, markupEntry)
 								else
-									local default = util.deepCopy(stackableBaseMarkup._entryDefaultvalues)
+									local default = util.deepCopy(stackableBaseMarkup._entryDefaultValues)
 									updateBase(markupName, dataModule, default, markupEntry)
 	
 									stackableBaseMarkup.stack[i] = default

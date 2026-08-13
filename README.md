@@ -647,7 +647,7 @@ Inserts and returns a new markup entry into a stackable markup at the given inde
 <details>
 <summary><code>:UpdateDefaultMarkups(markups)</code></summary>
 
-Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack arrays are sparse, meaning a removed entry will leave a gap):
+Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dicts, not arrays):
 
 ```luau
 local markups = HyperText.newMarkups()

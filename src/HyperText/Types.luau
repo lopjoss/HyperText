@@ -647,7 +647,7 @@ export type hyperTextClassContent = {
 export type hyperTextClassMethods = {
 	UpdateDefaultMarkups : typeof(
 		--[[
-			Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to <code>HyperText.DELETE</code>. For stackable markups, the following operations can be done (note that stack arrays are sparse, meaning a removed entry will leave a gap):
+			Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to <code>HyperText.DELETE</code>. For stackable markups, the following operations can be done (note that stack tables behave as dicts, not arrays):
 
 			```luau
 			local markups = HyperText.newMarkups()
@@ -1134,18 +1134,19 @@ export type markups = {
 export type markup = keyof<markups>
 export type markupIndexable = {
 	value : any,
-	attributes: {
+	attributes : {
 		[string]: any
 	},
-	valueAttributes: {
+	valueAttributes : {
 		[string] : {
 			[string] : any
 		}
 	},
+	stack : nil,
 }
 export type stackableMarkupIndexable = {
 	stack : {[number] : markupIndexable?},
-	_entryDefaultvalues : markupIndexable,
+	_entryDefaultValues : markupIndexable,
 }
 export type markupsIndexable = {
 	[string] : markupIndexable | stackableMarkupIndexable

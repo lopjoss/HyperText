@@ -123,7 +123,7 @@ HyperText.insertStackEntry = function<T>(
 	index : number
 ) : T
 	local default = util.deepCopy(markup._entryDefaultValues)
-	table.insert(markup.stack, default)
+	markup.stack[index] = default
 
 	return default
 end
