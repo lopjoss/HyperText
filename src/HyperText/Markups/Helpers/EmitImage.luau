@@ -12,7 +12,7 @@ return function(
 	id : number,
 	printerData : types.printerDataRowEntry,
 	markups : types.markups,
-	attributes : types.emitImgAttrs,
+	attributes : types.emitImgAttrs & types.flipbookAttrs,
 	updater : {[string] : (dt : number) -> ()}
 )
 	if obj._contentFolder and attributes.rate > 0 then
@@ -78,7 +78,7 @@ return function(
 					
 					applyFlipbookEffect(
 						img,
-						markups.emitImg.attributes,
+						attributes,
 						updater
 					)
 					
