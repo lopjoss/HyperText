@@ -109,14 +109,31 @@ HyperText.new = function(
 end
 
 --[[
-	Returns a full markups shaped dict with values/attributes emptied to nil.
+	Returns a full markups shaped dict with values/attributes emptied to nil. Used for updating an object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
+
+	```luau
+	local markups = HyperText.newMarkups()
+
+	-- alter an entry by getting it from a stack at a specific index
+	local entry = markups.emitImg.stack[1]
+	if entry then
+		entry.value = 123
+	end
+
+	-- add to a stack at a specific index
+	local entry = HyperText.insertStackEntry(markups.emitImg, 3)
+	entry.value = 123
+
+	-- remove from a stack
+	markups.emitImg.stack[2] = HyperText.DELETE
+	```
 ]]
 HyperText.newMarkups = function()
 	return util.getEmptyMarkups()
 end
 
 --[[
-	Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values. Negative or extremely large indices will cause unintended behaviour.
+	Returns a new markup entry which is inserted into a stackable markup at the given index and receives the markup's default entry values. Negative or extremely large indices will cause unintended behaviour.
 ]]
 HyperText.insertStackEntry = function<T>(
 	markup : types.stack<T>,

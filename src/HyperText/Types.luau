@@ -647,24 +647,7 @@ export type hyperTextClassContent = {
 export type hyperTextClassMethods = {
 	UpdateDefaultMarkups : typeof(
 		--[[
-			Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to <code>HyperText.DELETE</code>. For stackable markups, the following operations can be done (note that stack tables behave as dicts, not arrays):
-
-			```luau
-			local markups = HyperText.newMarkups()
-
-			-- alter an entry by getting it from a stack at a specific index
-			local entry = markups.emitImg.stack[1]
-			if entry then
-				entry.value = 123
-			end
-
-			-- add to a stack at a specific index
-			local entry = HyperText.insertStackEntry(markups.emitImg, 3)
-			entry.value = 123
-
-			-- remove from a stack
-			markups.emitImg.stack[2] = HyperText.DELETE
-			```
+			Merges the given markups dictionary into the object's default markups.
 
 			markups: markups
 			The dict, obtained from calling <code>.newMarkups().</code>

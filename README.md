@@ -633,21 +633,7 @@ Creates and returns a new HyperText object.
 <details>
 <summary><code>.newMarkups() : markups</code></summary>
 
-Returns a full markups shaped dict with values/attributes emptied to nil.
-
-</details>
-
-<details>
-<summary><code>.insertStackEntry(markup : types.stack<T>, index : number) : T</code></summary>
-
-Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values. Negative or extremely large indices will cause unintended behaviour.
-
-</details>
-
-<details>
-<summary><code>:UpdateDefaultMarkups(markups)</code></summary>
-
-Merges the given markups dictionary into the object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dicts, not arrays):
+Returns a full markups shaped dict with values/attributes emptied to nil. Used for updating an object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
 
 ```luau
 local markups = HyperText.newMarkups()
@@ -665,6 +651,20 @@ entry.value = 123
 -- remove from a stack
 markups.emitImg.stack[2] = HyperText.DELETE
 ```
+
+</details>
+
+<details>
+<summary><code>.insertStackEntry(markup : types.stack<T>, index : number) : T</code></summary>
+
+Returns a new markup entry which is inserted into a stackable markup at the given index and receives the markup's default entry values. Negative or extremely large indices will cause unintended behaviour.
+
+</details>
+
+<details>
+<summary><code>:UpdateDefaultMarkups(markups)</code></summary>
+
+Merges the given markups dictionary into the object's default markups.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
