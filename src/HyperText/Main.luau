@@ -116,7 +116,7 @@ HyperText.newMarkups = function()
 end
 
 --[[
-	Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values
+	Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values. Negative or extremely large indices will cause unintended behaviour.
 ]]
 HyperText.insertStackEntry = function<T>(
 	markup : types.stack<T>,
@@ -1797,12 +1797,21 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 											if success or not markupValue then
 												local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
 
-												table.insert(markupHistory, 1, markupType)
-												
-												self._constructionScheduler:Append(function()
-													self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
-													self:_CreateSpan(markupType)
-												end)
+												if success or #attrsValues > 0 then
+													table.insert(markupHistory, 1, markupType)
+													
+													self._constructionScheduler:Append(function()
+														self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
+														self:_CreateSpan(markupType)
+													end)
+												else
+													warn(
+														"Failed to parse tag \""
+															.. string.sub(t, i, tagEndPos) 
+															.. "\": no assigned value or attributes found"
+															.. "\n" .. renderTraceback
+													)
+												end
 											else
 												warn(
 													"Failed to parse tag \""

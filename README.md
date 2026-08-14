@@ -640,7 +640,7 @@ Returns a full markups shaped dict with values/attributes emptied to nil.
 <details>
 <summary><code>.insertStackEntry(markup : types.stack<T>, index : number) : T</code></summary>
 
-Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values
+Inserts and returns a new markup entry into a stackable markup at the given index which receives its default entry values. Negative or extremely large indices will cause unintended behaviour.
 
 </details>
 

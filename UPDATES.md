@@ -6,7 +6,16 @@
 	- caching during construction / parsing so there won't be any print delays from fetching
 	- add bgImg markup
 	- baseFromDefaults global attribute
-	- stackable markups
+]]
+
+--[[	v4.2.3		9-8-2026
+
+	CHANGES:
+		the parser now warns if it finds an opening tag with no assigned value or attributes, which it now won't process
+
+	ADDITIONS:
+		certian markups have now the possiblity to be stacked, meaning nested tag pairs will all be applied
+
 ]]
 
 --[[	v4.1.3		9-8-2026
