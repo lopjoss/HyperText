@@ -1081,7 +1081,7 @@ export type markups = {
 		valueAttributes : {},
 	},
 	emitImg : stack<{
-		value : number?,
+		value : number,
 		attributes : emitImgAttrs & flipbookAttrs,
 		valueAttributes : {},
 	}>,
@@ -1144,12 +1144,8 @@ export type markupIndexable = {
 	},
 	stack : nil,
 }
-export type stackableMarkupIndexable = {
-	stack : {[number] : markupIndexable?},
-	_entryDefaultValues : markupIndexable,
-}
 export type markupsIndexable = {
-	[string] : markupIndexable | stackableMarkupIndexable
+	[string] : markupIndexable | stack<markupIndexable>
 }
 
 return module

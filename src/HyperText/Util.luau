@@ -81,7 +81,7 @@ util.getEmptyMarkups = function() : types.markups
 
 	for _, markup in pairs(markups :: types.markupsIndexable) do
 		local isStackable = markup.stack and true or false
-		local stackableMarkup = isStackable and markup :: types.stackableMarkupIndexable
+		local stackableMarkup = isStackable and markup :: types.stack<types.markupIndexable>
 		local markup = not isStackable and markup :: types.markupIndexable
 
 		if stackableMarkup then
@@ -166,19 +166,21 @@ util.mergeMarkups = function(
 		baseMarkup : types.markupIndexable,
 		markup : types.markupIndexable
 	)
-		if markup.value == util.DELETE_SYNTAX then
-			if dataModule.unrequired then
-				baseMarkup.value = nil
-			else
-				warn(
-					debug.traceback(
-						"Failed to delete the \""
-							.. markupName .. "\" markup: This markup cannot be deleted\nTraceback:"
+		if markup.value ~= nil then
+			if markup.value == util.DELETE_SYNTAX then
+				if dataModule.unrequired then
+					baseMarkup.value = nil
+				else
+					warn(
+						debug.traceback(
+							"Failed to delete the \""
+								.. markupName .. "\" markup: This markup cannot be deleted\nTraceback:"
+						)
 					)
-				)
+				end
+			else
+				baseMarkup.value = markup.value
 			end
-		else
-			baseMarkup.value = markup.value
 		end
 
 		for attr, value in pairs(markup.attributes) do
@@ -246,32 +248,31 @@ util.mergeMarkups = function(
 			if name == markupName then
 				local isStackable = markup.stack and true or false
 				local baseMarkup = not isStackable and (base :: types.markupsIndexable)[markupName] :: types.markupIndexable or nil
-				local stackableBaseMarkup = isStackable and (base :: types.markupsIndexable)[markupName] :: types.stackableMarkupIndexable or nil
+				local stackableBaseMarkup = isStackable and (base :: types.markupsIndexable)[markupName] :: types.stack<types.markupIndexable> or nil
+				local stackableMarkup = isStackable and markup :: types.stack<types.markupIndexable>
+				local markup = not isStackable and markup :: types.markupIndexable
 		
-				if stackableBaseMarkup and dataModule.type == "paired" then
-					markup = markup :: types.stackableMarkupIndexable
-		
-					for i = 1, #markup.stack do
-						local markupEntry = markup.stack[i]
-						local baseMarkupEntry = stackableBaseMarkup.stack[i]
-		
+				if stackableBaseMarkup and stackableMarkup and dataModule.type == "paired" then
+					for i, markupEntry : index<index<types.stack<types.markupIndexable>, "stack">, number> in pairs(stackableMarkup.stack) do
 						if markupEntry then
 							if markupEntry == util.DELETE_SYNTAX then
 								stackableBaseMarkup.stack[i] = nil
 							else
+								local baseMarkupEntry = stackableBaseMarkup.stack[i]
+
 								if baseMarkupEntry then
 									updateBase(markupName, dataModule, baseMarkupEntry, markupEntry)
 								else
-									local default = util.deepCopy(stackableBaseMarkup._entryDefaultValues)
-									updateBase(markupName, dataModule, default, markupEntry)
+									local entry = util.deepCopy(stackableBaseMarkup._entryDefaultValues)
+									updateBase(markupName, dataModule, entry, markupEntry)
 	
-									stackableBaseMarkup.stack[i] = default
+									stackableBaseMarkup.stack[i] = entry
 								end
 							end
 						end
 					end
-				elseif baseMarkup then
-					updateBase(markupName, dataModule, baseMarkup, markup :: types.markupIndexable)
+				elseif baseMarkup and markup then
+					updateBase(markupName, dataModule, baseMarkup, markup)
 				end
 			end
 		end
@@ -283,76 +284,101 @@ util.updateMarkups = function(
 	type_ : string,
 	value : any,
 	attrsValues : {{attr : string, schemaAttr : string, value : any, markupValue : string?}},
-	isStackable : boolean?
+	isStackable : boolean?,
+	revertStack : boolean?
 ) : (any, {{attr : string, schemaAttr : string, value : any, markupValue : string?}})
-	local previousAttrsValues = {}
+	local previousAttrsValues : {{attr : string, schemaAttr : string, value : any, markupValue : string?}} = {}
 	local markup = not isStackable and util.indexCaseInsensitive(base :: types.markupsIndexable, type_) :: types.markupIndexable?
-	local stackableMarkup = isStackable and util.indexCaseInsensitive(base :: types.markupsIndexable, type_) :: {types.markupIndexable}?
-	local stackableMarkupEntry : types.markupIndexable? = isStackable and value ~= util.DELETE_SYNTAX and {
-		value = value,
-		attributes = {},
-		valueAttributes = {},
-	} or nil
+	local stackableMarkup = isStackable and util.indexCaseInsensitive(base :: types.markupsIndexable, type_) :: types.stack<types.markupIndexable>?
 	local previousValue : any
 
 	if stackableMarkup then
-		previousValue = #stackableMarkup > 0 and stackableMarkup[#stackableMarkup] or stackableMarkup
+		if not revertStack then
+			previousValue = util.deepCopy(stackableMarkup.stack)
+		end
 	elseif markup then
 		previousValue = markup.value == nil and util.DELETE_SYNTAX or markup.value
 	end
-	-- local attrs = markup.attributes
 
 	if value ~= nil then
 		if value == util.DELETE_SYNTAX then
-			-- markup.value = nil
-			if stackableMarkup then
-				table.remove(stackableMarkup, #stackableMarkup)
-			elseif markup then
+			if markup then
 				markup.value = nil
 			end
-		elseif stackableMarkup and stackableMarkupEntry then
-			table.insert(stackableMarkup, stackableMarkupEntry)
+		elseif stackableMarkup then
+			if not revertStack then
+				local entry = util.deepCopy(stackableMarkup._entryDefaultValues)
+				entry.value = value
+				
+				local i = 0
+				for j, _ in pairs(stackableMarkup.stack) do
+					if j > i then
+						i = j
+					end
+				end
+				stackableMarkup.stack[i + 1] = entry
+			else
+				stackableMarkup.stack = value
+			end
 		elseif markup then
 			markup.value = value
 		end
 	end
 
-	-- update stackableMarkupEntry's attributes and valueAttributes
-	for _, data in ipairs(attrsValues) do
-		if not data.markupValue then
-			local previousValue = util.safeIndexCaseInsensitive(attrs, data.attr)
-
-			table.insert(previousAttrsValues, {
-				attr = data.attr,
-				schemaAttr = data.schemaAttr,
-				value = previousValue,
-			})
-
-			if previousValue then
-				util.setCaseInsensitive(attrs, data.attr, data.value)
-			elseif data.value ~= nil then
-				attrs[data.schemaAttr] = data.value
+	local attrs : index<types.markupIndexable, "attributes">? = markup and markup.attributes or nil
+	local valueAttrs : index<types.markupIndexable, "valueAttributes">? = markup and markup.valueAttributes or nil
+	if stackableMarkup then
+		local i = 1
+		for j, _ in pairs(stackableMarkup.stack) do
+			if j > i then
+				i = j
 			end
-		else
-			local valueAttrs = util.indexCaseInsensitive(markup.valueAttributes, data.markupValue)
-			local previousValue = util.safeIndexCaseInsensitive(valueAttrs, data.attr)
+		end
+		
+		local entry = stackableMarkup.stack[i]
+		if entry then
+			attrs = entry.attributes
+			valueAttrs = entry.valueAttributes
+		end
+	end
 
-			table.insert(previousAttrsValues, {
-				attr = data.attr,
-				schemaAttr = data.schemaAttr,
-				value = previousValue,
-				markupValue = data.markupValue
-			})
+	if not revertStack and attrs and valueAttrs then
+		for _, data in ipairs(attrsValues) do
+			if not data.markupValue then
+				local attrPreviousValue = util.safeIndexCaseInsensitive(attrs, data.attr)
 
-			if previousValue then
-				util.setCaseInsensitive(valueAttrs, data.attr, data.value)
-			elseif data.value ~= nil then
-				valueAttrs[data.schemaAttr] = data.value
+				table.insert(previousAttrsValues, {
+					attr = data.attr,
+					schemaAttr = data.schemaAttr,
+					value = attrPreviousValue,
+				})
+
+				if attrPreviousValue then
+					util.setCaseInsensitive(attrs, data.attr, data.value)
+				elseif data.value ~= nil then
+					attrs[data.schemaAttr] = data.value
+				end
+			else
+				local valueAttrs = util.indexCaseInsensitive(valueAttrs, data.markupValue)
+				local previousValue = util.safeIndexCaseInsensitive(valueAttrs, data.attr)
+
+				table.insert(previousAttrsValues, {
+					attr = data.attr,
+					schemaAttr = data.schemaAttr,
+					value = previousValue,
+					markupValue = data.markupValue,
+				})
+
+				if previousValue then
+					util.setCaseInsensitive(valueAttrs, data.attr, data.value)
+				elseif data.value ~= nil then
+					valueAttrs[data.schemaAttr] = data.value
+				end
 			end
 		end
 	end
 
-	return previousValue, previousAttrsValues
+	return previousValue, previousAttrsValues, not revertStack
 end
 
 local MAX_RETRIES = 5

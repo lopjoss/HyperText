@@ -1800,7 +1800,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 												table.insert(markupHistory, 1, markupType)
 												
 												self._constructionScheduler:Append(function()
-													self:_ApplyMarkup(markupType, convertedValue, attrsValues)
+													self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
 													self:_CreateSpan(markupType)
 												end)
 											else
@@ -1928,7 +1928,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 											table.remove(markupHistory, k)
 											
 											self._constructionScheduler:Append(function()
-												self:_RemoveMarkup(markupType)
+												self:_RemoveMarkup(markupType, dataModule.stackable)
 												self:_CloseLastSpan(markupType)
 											end)
 
@@ -2003,7 +2003,8 @@ methods._ApplyMarkup = function(
 			type_,
 			value,
 			attrsValues,
-			stackable
+			stackable,
+			false
 		)
 		
 		table.insert(self._markupHistory, 1, {
@@ -2029,6 +2030,7 @@ methods._RemoveMarkup = function(
 					v.type,
 					v.value,
 					v.attrsValues,
+					stackable,
 					stackable
 				)
 				

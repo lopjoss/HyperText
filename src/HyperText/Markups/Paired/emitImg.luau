@@ -20,7 +20,7 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		updater : {[string] : (dt : number) -> ()}
 	)
 		for _, markup in pairs(printerData.markups.emitImg.stack) do
-			if markup and markup.value then
+			if markup then
 				emitImage(
 					obj,
 					markup.value,
@@ -35,7 +35,6 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 	convert = util.stringToNumber,
 	attributes = emitImgAttrsConverters,
 	valueAttributes = {},
-	unrequired = true,
 	stackable = true,
 }
 
