@@ -1,5 +1,5 @@
 --[[
-	v1.0.0
+	v1.1.1
 
 	Memoizer implementation by @lopjoss
 
@@ -11,14 +11,15 @@
 	- recursive fetching of the same schema path is not supported and will never complete
 ]]
 
-local util = require("./Util")
-local signal = require("./Signal")
-
 const RECORD_NIL = function() : any
 	return nil
 end
 
-type uncertainSchema = {[any] : uncertainSchema}?
+type uncertainSchemaLayer = {[any] : uncertainSchemaLayer}?
+type pendingSchemaTail = {
+	pending : {thread},
+	initiator : thread
+}
 
 type function isSchemaTailUDTF(layer : type) : boolean
 	return not (layer:is("table") and (
@@ -106,11 +107,16 @@ type function pendingSchema(schema : type) : type
 				current = new
 			else
 				current:setindexer(indexer.index, types.newtable(
-					nil,
 					{
-						index = types.number,
-						readresult = types.thread,
-						writeresult = types.thread,
+						[types.singleton("pending")] = types.newtable(
+								nil,
+							{
+								index = types.number,
+								readresult = types.thread,
+								writeresult = types.thread,
+							}	
+						),
+						[types.singleton("initiator")] = types.thread,
 					}
 				))
 
@@ -176,7 +182,8 @@ module.__index = module
 
 type classContent<T> = {
 	_cache : T,
-	_pending : pendingSchema<T>
+	_pending : pendingSchema<T>,
+	_maxAttempts : number,
 }
 
 type classMethods<T> = {
@@ -197,10 +204,11 @@ type classMethods<T> = {
 
 export type classType<T> = classContent<T> & classMethods<T>
 
-module.new = function<T>() : classType<T>
+module.new = function<T>(maxAttempts : number?) : classType<T>
 	local classContent : classContent<T> = {
 		_cache = {},
 		_pending = {} :: pendingSchema<T>,
+		_maxAttempts = math.max(maxAttempts or 1, 1),
 	}
 
 	return setmetatable(classContent, module) :: any
@@ -213,37 +221,39 @@ module._ClearPending = function<T>(
 )
 	local pathBranchRootKey : any = next(schema)
 	local pathBranchRootLayer : {[any] : any} = self._pending
-	local currentPendingSchemaLayer : {[any] : uncertainSchema}? = self._pending
+	local currentPendingSchemaLayer : {[any] : any} = self._pending
 
 	for k, v in iterateSchema(schema) do
-		local nextPendingSchemaLayer = currentPendingSchemaLayer
-			and currentPendingSchemaLayer[k]
+		local nextPendingSchemaLayer = currentPendingSchemaLayer[k]
 
-		if nextPendingSchemaLayer then
-			if not isSchemaTail(v) then
-				currentPendingSchemaLayer = nextPendingSchemaLayer
+		if not isSchemaTail(v) then
+			currentPendingSchemaLayer = nextPendingSchemaLayer
 
-				if getDictionaryLength(currentPendingSchemaLayer) > 1 then
-					pathBranchRootLayer = currentPendingSchemaLayer
-					pathBranchRootKey = next(v)
-				end
-			else
-				local threads = nextPendingSchemaLayer :: {thread}
-
-				pathBranchRootLayer[pathBranchRootKey] = nil
-				
-				for _, thread in ipairs(threads) do
-					pcall(function()
-						task.spawn(
-							thread,
-							not throwResult,
-							if v ~= RECORD_NIL then v else RECORD_NIL()
-						)
-					end)
-				end
+			if getDictionaryLength(currentPendingSchemaLayer) > 1 then
+				pathBranchRootLayer = currentPendingSchemaLayer
+				pathBranchRootKey = next(v)
 			end
 		else
-			break
+			nextPendingSchemaLayer = nextPendingSchemaLayer :: pendingSchemaTail
+
+			if 
+				coroutine.running() ~= nextPendingSchemaLayer.initiator
+				and coroutine.status(nextPendingSchemaLayer.initiator) ~= "dead"
+			then
+				task.cancel(nextPendingSchemaLayer.initiator)
+			end
+
+			pathBranchRootLayer[pathBranchRootKey] = nil
+			
+			for _, thread in ipairs(nextPendingSchemaLayer.pending) do
+				pcall(function()
+					task.spawn(
+						thread,
+						not throwResult,
+						if v ~= RECORD_NIL then v else RECORD_NIL()
+					)
+				end)
+			end
 		end
 	end
 end
@@ -252,8 +262,8 @@ module.Record = function<T>(
 	self : classType<T>,
 	schema : T
 )
-	local currentCacheSchemaLayer : {[any] : uncertainSchema} = self._cache
-	local currentPendingSchemaLayer : {[any] : uncertainSchema}? = self._pending
+	local currentCacheSchemaLayer : {[any] : uncertainSchemaLayer} = self._cache
+	local currentPendingSchemaLayer : {[any] : uncertainSchemaLayer}? = self._pending
 
 	for k, v in iterateSchema(schema) do
 		local nextCacheSchemaLayer = currentCacheSchemaLayer[k]
@@ -286,7 +296,7 @@ module.Get = function<T>(
 	self : classType<T>,
 	schema : fetchingSchema<T>
 ) : getTailValueFromSchema<T>
-	local currentCacheSchemaLayer : {[any] : uncertainSchema}? = self._cache
+	local currentCacheSchemaLayer : {[any] : uncertainSchemaLayer}? = self._cache
 
 	for k, v in iterateSchema(schema) do
 		local nextCacheSchemaLayer = currentCacheSchemaLayer and currentCacheSchemaLayer[k]
@@ -294,15 +304,13 @@ module.Get = function<T>(
 		if not isSchemaTail(v) then
 			currentCacheSchemaLayer = nextCacheSchemaLayer
 		elseif nextCacheSchemaLayer ~= nil then
-			nextCacheSchemaLayer = nextCacheSchemaLayer :: getTailValueFromSchema<T>
-			
-			return if nextCacheSchemaLayer ~= RECORD_NIL 
+			return if nextCacheSchemaLayer :: getTailValueFromSchema<T> ~= RECORD_NIL 
 				then getValueFromSchemaTail(nextCacheSchemaLayer)
 				else RECORD_NIL()
 		else
-			local currentPendingSchemaLayer : {[any] : uncertainSchema} = self._pending
-			local isInitiater = false
-			local threads : {thread} = {}
+			local currentPendingSchemaLayer : {[any] : uncertainSchemaLayer} = self._pending
+			local isInitiator = false
+			local pendingSchemaTail : pendingSchemaTail
 	
 			for k, v in iterateSchema(schema) do
 				local nextPendingSchemaLayer = currentPendingSchemaLayer[k]
@@ -319,61 +327,62 @@ module.Get = function<T>(
 	
 					currentPendingSchemaLayer = newPendingSchemaLayer
 				elseif nextPendingSchemaLayer then
-					threads = nextPendingSchemaLayer :: {thread}
+					pendingSchemaTail = nextPendingSchemaLayer :: pendingSchemaTail
 				else
-					isInitiater = true
-
-					currentPendingSchemaLayer[k] = threads
-				end
-			end
-	
-			local success : boolean, value : any
-
-			if isInitiater then
-				local completed = false
-				local signal = signal.new()
-
-				task.spawn(function()
-					success, value = pcall(v)
-	
-					if type(value) == "table" then
-						value = {
-							value = value
-						}
-					end
-
-					local newSchema = util.deepCopy(schema)
+					local newSchema : T = {}
 					local currentNewSchemaLayer : {[any] : any} = newSchema
-					for k, v in iterateSchema(newSchema) do
-						if isSchemaTail(v) then
-							currentNewSchemaLayer[k] = value == nil
-								and RECORD_NIL
-								or value
-						else
+					
+					for k, v in iterateSchema(schema) do
+						if not isSchemaTail(v) then
+							currentNewSchemaLayer[k] = {}
 							currentNewSchemaLayer = currentNewSchemaLayer[k]
 						end
 					end
-	
-					if success then
-						self:Record(newSchema)
-					else
-						self:_ClearPending(newSchema, true)
-					end
+					
+					isInitiator = true
+					pendingSchemaTail = {
+						pending = {},
+						initiator = coroutine.create(function()
+							local success : boolean, value : any
 
-					signal:Fire()
+							for i = 1, self._maxAttempts do
+								success, value = pcall(v)
 
-					completed = true
-				end)
+								if success then
+									break
+								end
+							end
+			
+							if type(value) == "table" then
+								value = {
+									value = value
+								}
+							end
 
-				if not completed then
-					signal:Wait()
+							currentNewSchemaLayer[k] = value == nil
+								and RECORD_NIL
+								or value
+			
+							if success then
+								self:Record(newSchema)
+							else
+								self:_ClearPending(newSchema, true)
+							end
+						end),
+					}
+
+					currentPendingSchemaLayer[k] = pendingSchemaTail :: uncertainSchemaLayer
 				end
-			else
-				table.insert(threads, coroutine.running())
-
-				success, value = coroutine.yield()
 			end
+			
+			if isInitiator then
+				task.defer(pendingSchemaTail.initiator)
+			end
+			
+			table.insert(pendingSchemaTail.pending, coroutine.running())
 
+			local success : boolean, value : any = coroutine.yield()
+			
 			if success then
 				return getValueFromSchemaTail(value)
 			else
