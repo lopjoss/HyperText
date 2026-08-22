@@ -1,24 +1,26 @@
+--!strict
+
 --[[
-	v1.1.1
+	v1.3.1
 
 	Memoizer implementation by @lopjoss
 
 	caching a table works by making the schema's tail a dictionary with a key
 	value pair where the key is a singleton "value" and the value is your table
 
-	note that:
-	- schemas are meant to have one singular path; multiple keys is not supported
-	- recursive fetching of the same schema path is not supported and will never complete
+	note that schemas are meant to have one singular path; multiple keys is not
+	supported
 ]]
 
-const RECORD_NIL = function() : any
-	return nil
-end
-
-type uncertainSchemaLayer = {[any] : uncertainSchemaLayer}?
+type schemaLayer = {[any] : schemaLayer}
+type uncertainSchemaLayer = {[any] : uncertainSchemaLayer?}
 type pendingSchemaTail = {
 	pending : {thread},
 	initiator : thread
+}
+type cacheRecord = {
+	key : any,
+	layer : schemaLayer
 }
 
 type function isSchemaTailUDTF(layer : type) : boolean
@@ -34,7 +36,7 @@ type function getValueFromSchemaTailUDTF(tail : type) : type
 		if value then
 			return value
 		else
-			error("no value singleton key found in schema's tail of table type")
+			error("No value singleton key found in schema's tail of table type")
 		end
 	else
 		return tail
@@ -56,7 +58,7 @@ type function getTailValueFromSchema(schema : type) : type
 				return getValueFromSchemaTailUDTF(indexer.result)
 			end
 		else
-			error("no indexer found in schema layer")
+			error("No indexer found in schema layer")
 		end
 	end
 end
@@ -85,7 +87,7 @@ export type function fetchingSchema(schema : type) : type
 				break
 			end
 		else
-			error("no indexer found in schema layer")
+			error("No indexer found in schema layer")
 		end
 	end
 
@@ -123,11 +125,15 @@ type function pendingSchema(schema : type) : type
 				break
 			end
 		else
-			error("no indexer found in schema layer")
+			error("No indexer found in schema layer")
 		end
 	end
 
 	return schema
+end
+
+const RECORD_NIL = function() : any
+	return nil
 end
 
 local function isSchemaTail(layer : any) : boolean
@@ -142,7 +148,7 @@ local function getValueFromSchemaTail(tail : any) : any
 	end
 end
 
-local function iterateSchema(schema : {[any] : any})
+local function iterateSchema(schema : schemaLayer)
 	local currentSchemaLayer : {[unknown] : any} = schema
 	local completed = false
 
@@ -159,7 +165,7 @@ local function iterateSchema(schema : {[any] : any})
 				
 				return k, v
 			else
-				error("no key value pair found in schema layer")
+				error("No key value pair found in schema layer")
 			end
 		else
 			return nil
@@ -167,30 +173,54 @@ local function iterateSchema(schema : {[any] : any})
 	end
 end
 
-local function getDictionaryLength(dict : {[any] : any}) : number
-	local amount = 0
+local function hasMultipleBranches(schema : schemaLayer) : boolean
+	local first = next(schema)
 
-	for _, _ in pairs(dict) do
-		amount += 1
-	end
-
-	return amount
+	return first ~= nil and next(schema, first) ~= nil
 end
 
 local module = {}
 module.__index = module
 
-type classContent<T> = {
+type classContentCacheCeiling<T> = classContentBase<T> & {
+	_keyByLayer : {[schemaLayer] : any},
+	_parentByLayer : {[schemaLayer] : schemaLayer},
+
+	_maxCacheRecords : number,
+	_cacheRecords : {[number] : cacheRecord},
+	_cacheRecordsCount : number,
+	_oldestCacheRecordIndex : number,
+	_cacheRecordsInsertionIndex : number,
+}
+
+type classContentBase<T> = {
 	_cache : T,
 	_pending : pendingSchema<T>,
 	_maxAttempts : number,
 }
+
+type classContent<T> = {
+	_maxCacheRecords : number?
+} & (
+	classContentCacheCeiling<T> | (
+		classContentBase<T> & {
+			_maxCacheRecords : nil
+		}
+	)
+)
 
 type classMethods<T> = {
 	_ClearPending : (
 		self : classType<T>,
 		schema : T,
 		throwResult : boolean?
+	) -> (),
+	_PruneCacheRecord : (
+		self : classContentCacheCeiling<T> & classMethods<T>,
+		index : number
+	) -> (),
+	ClearCache : (
+		self : classType<T>
 	) -> (),
 	Record : (
 		self : classType<T>,
@@ -204,12 +234,41 @@ type classMethods<T> = {
 
 export type classType<T> = classContent<T> & classMethods<T>
 
-module.new = function<T>(maxAttempts : number?) : classType<T>
-	local classContent : classContent<T> = {
-		_cache = {},
-		_pending = {} :: pendingSchema<T>,
-		_maxAttempts = math.max(maxAttempts or 1, 1),
-	}
+module.new = function<T>(
+	maxAttempts : number?,
+	maxCacheRecords : number?
+) : classType<T>
+	local classContent: classContent<T>
+
+	if maxCacheRecords ~= nil then
+		local withCacheCeiling : classContentCacheCeiling<T> = {
+			_cache = {},
+			_pending = {} :: pendingSchema<T>,
+			_maxAttempts = math.max(maxAttempts or 1, 1),
+
+			_maxCacheRecords = math.max(1, math.round(maxCacheRecords)),
+			_cacheRecords = {},
+			_cacheRecordsCount = 0,
+			_oldestCacheRecordIndex = 1,
+			_cacheRecordsInsertionIndex = 1,
+			_keyByLayer = {},
+			_parentByLayer = {},
+		}
+
+		classContent = withCacheCeiling :: any
+	else
+		local base : classContentBase<T> = {
+			_cache = {},
+			_pending = {} :: pendingSchema<T>,
+			_maxAttempts = math.max(
+				maxAttempts and math.round(maxAttempts) or 1,
+				1
+			),
+			_maxCacheRecords = nil,
+		}
+
+		classContent = base :: any
+	end
 
 	return setmetatable(classContent, module) :: any
 end
@@ -219,9 +278,9 @@ module._ClearPending = function<T>(
 	schema : T,
 	throwResult : boolean?
 )
-	local pathBranchRootKey : any = next(schema)
-	local pathBranchRootLayer : {[any] : any} = self._pending
-	local currentPendingSchemaLayer : {[any] : any} = self._pending
+	local branchRootKey : any = next(schema)
+	local branchRootLayer : schemaLayer = self._pending
+	local currentPendingSchemaLayer : schemaLayer = self._pending
 
 	for k, v in iterateSchema(schema) do
 		local nextPendingSchemaLayer = currentPendingSchemaLayer[k]
@@ -229,9 +288,9 @@ module._ClearPending = function<T>(
 		if not isSchemaTail(v) then
 			currentPendingSchemaLayer = nextPendingSchemaLayer
 
-			if getDictionaryLength(currentPendingSchemaLayer) > 1 then
-				pathBranchRootLayer = currentPendingSchemaLayer
-				pathBranchRootKey = next(v)
+			if hasMultipleBranches(currentPendingSchemaLayer) then
+				branchRootLayer = currentPendingSchemaLayer
+				branchRootKey = next(v)
 			end
 		else
 			nextPendingSchemaLayer = nextPendingSchemaLayer :: pendingSchemaTail
@@ -243,18 +302,57 @@ module._ClearPending = function<T>(
 				task.cancel(nextPendingSchemaLayer.initiator)
 			end
 
-			pathBranchRootLayer[pathBranchRootKey] = nil
+			branchRootLayer[branchRootKey] = nil
 			
 			for _, thread in ipairs(nextPendingSchemaLayer.pending) do
-				pcall(function()
-					task.spawn(
-						thread,
-						not throwResult,
-						if v ~= RECORD_NIL then v else RECORD_NIL()
-					)
-				end)
+				pcall(
+					task.spawn,
+					thread, 
+					not throwResult, 
+					if v ~= RECORD_NIL then v else RECORD_NIL()
+				)
 			end
 		end
+	end
+end
+
+module._PruneCacheRecord = function<T>(
+	self : classContentCacheCeiling<T> & classMethods<T>,
+	index : number
+)
+	local record = self._cacheRecords[index]
+	local currentKey = record.key
+	local currentLayer = record.layer
+
+	while 
+		currentLayer ~= self._cache
+		and not hasMultipleBranches(currentLayer)
+	do
+		local previousLayer = currentLayer
+
+		currentKey = self._keyByLayer[currentLayer]
+		currentLayer = self._parentByLayer[currentLayer]
+
+		self._keyByLayer[previousLayer] = nil
+		self._parentByLayer[previousLayer] = nil
+	end
+
+	currentLayer[currentKey] = nil
+end
+
+module.ClearCache = function<T>(
+	self : classType<T>
+)
+	self._cache = {}
+
+	if self._maxCacheRecords then
+		self._keyByLayer = {}
+		self._parentByLayer = {}
+
+		self._cacheRecordsCount = 0
+		self._oldestCacheRecordIndex = 1
+		self._cacheRecordsInsertionIndex = 1
+		self._cacheRecords = {}
 	end
 end
 
@@ -262,8 +360,8 @@ module.Record = function<T>(
 	self : classType<T>,
 	schema : T
 )
-	local currentCacheSchemaLayer : {[any] : uncertainSchemaLayer} = self._cache
-	local currentPendingSchemaLayer : {[any] : uncertainSchemaLayer}? = self._pending
+	local currentCacheSchemaLayer : {[any] : uncertainSchemaLayer?} = self._cache
+	local currentPendingSchemaLayer : uncertainSchemaLayer? = self._pending
 
 	for k, v in iterateSchema(schema) do
 		local nextCacheSchemaLayer = currentCacheSchemaLayer[k]
@@ -271,10 +369,16 @@ module.Record = function<T>(
 			and currentPendingSchemaLayer[k]
 
 		if not isSchemaTail(v) then
-			local newCacheSchemaLayer
+			local newCacheSchemaLayer : uncertainSchemaLayer
 
 			if not nextCacheSchemaLayer then
 				newCacheSchemaLayer = {}
+
+				if self._maxCacheRecords then
+					self._keyByLayer[newCacheSchemaLayer :: schemaLayer] = k
+					self._parentByLayer[newCacheSchemaLayer :: schemaLayer] = currentCacheSchemaLayer :: schemaLayer
+				end
+
 				currentCacheSchemaLayer[k] = newCacheSchemaLayer
 			else
 				newCacheSchemaLayer = nextCacheSchemaLayer
@@ -284,7 +388,26 @@ module.Record = function<T>(
 			currentPendingSchemaLayer = nextPendingSchemaLayer
 		else
 			currentCacheSchemaLayer[k] = v
-	
+
+			if nextCacheSchemaLayer == nil and self._maxCacheRecords then
+				local record : cacheRecord = {
+					layer = currentCacheSchemaLayer :: schemaLayer,
+					key = k
+				}
+
+				if self._maxCacheRecords == self._cacheRecordsCount then
+					self:_PruneCacheRecord(self._oldestCacheRecordIndex)
+
+					self._cacheRecords[self._oldestCacheRecordIndex] = record
+					self._oldestCacheRecordIndex += 1
+					self._oldestCacheRecordIndex = ((self._oldestCacheRecordIndex - 1) % self._cacheRecordsCount) + 1 
+				else
+					self._cacheRecords[self._cacheRecordsInsertionIndex] = record
+					self._cacheRecordsInsertionIndex += 1
+					self._cacheRecordsCount += 1
+				end
+			end
+						
 			if nextPendingSchemaLayer then
 				self:_ClearPending(schema)
 			end
@@ -296,7 +419,7 @@ module.Get = function<T>(
 	self : classType<T>,
 	schema : fetchingSchema<T>
 ) : getTailValueFromSchema<T>
-	local currentCacheSchemaLayer : {[any] : uncertainSchemaLayer}? = self._cache
+	local currentCacheSchemaLayer : uncertainSchemaLayer? = self._cache
 
 	for k, v in iterateSchema(schema) do
 		local nextCacheSchemaLayer = currentCacheSchemaLayer and currentCacheSchemaLayer[k]
@@ -308,7 +431,7 @@ module.Get = function<T>(
 				then getValueFromSchemaTail(nextCacheSchemaLayer)
 				else RECORD_NIL()
 		else
-			local currentPendingSchemaLayer : {[any] : uncertainSchemaLayer} = self._pending
+			local currentPendingSchemaLayer : {[any] : uncertainSchemaLayer?} = self._pending
 			local isInitiator = false
 			local pendingSchemaTail : pendingSchemaTail
 	
@@ -316,7 +439,7 @@ module.Get = function<T>(
 				local nextPendingSchemaLayer = currentPendingSchemaLayer[k]
 	
 				if not isSchemaTail(v) then
-					local newPendingSchemaLayer
+					local newPendingSchemaLayer : uncertainSchemaLayer
 	
 					if not nextPendingSchemaLayer then
 						newPendingSchemaLayer = {}
@@ -328,9 +451,13 @@ module.Get = function<T>(
 					currentPendingSchemaLayer = newPendingSchemaLayer
 				elseif nextPendingSchemaLayer then
 					pendingSchemaTail = nextPendingSchemaLayer :: pendingSchemaTail
+
+					if pendingSchemaTail.initiator == coroutine.running() then
+						error("Recursive fetching of the same schema path is not supported")
+					end
 				else
 					local newSchema : T = {}
-					local currentNewSchemaLayer : {[any] : any} = newSchema
+					local currentNewSchemaLayer : schemaLayer = newSchema
 					
 					for k, v in iterateSchema(schema) do
 						if not isSchemaTail(v) then
@@ -386,12 +513,12 @@ module.Get = function<T>(
 			if success then
 				return getValueFromSchemaTail(value)
 			else
-				error(`failed to fetch value: {value}`)
+				error(`Failed to fetch value: {value}`)
 			end
 		end
 	end
 
-	error("schema iteration did not return any value")
+	error("Schema iteration did not return any value")
 end
 
 return module
