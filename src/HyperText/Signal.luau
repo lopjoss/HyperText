@@ -2,7 +2,7 @@
 --!optimize 2
 
 -- signal implementation by @lopjoss
--- v1.0.0
+-- v1.0.2
 
 local module = {}
 
@@ -37,79 +37,117 @@ type classContent<P...> = {
 }
 type classMethods<P...> = {
 	Connect : typeof(
-		-- connects a callback that runs whenever the signal fires
+		--[[
+			connects a callback that runs whenever the signal fires
+		]]
 		function(self : classType<P...>, callback : (P...) -> ()) : connectionClassType<P...> return nil :: any end
 	),
 	Once : typeof(
-		-- connects a callback that runs once and then disconnects
+		--[[
+			connects a callback that runs once and then disconnects
+		]]
 		function(self : classType<P...>, callback : (P...) -> ()) : connectionClassType<P...> return nil :: any end
 	),
 	Filter : typeof(
-		-- creates a derived signal that forwards values accepted by the filter
+		--[[
+			creates a derived signal that forwards values accepted by the filter
+		]]
 		function(self : classType<P...>, filter : (P...) -> boolean) : classType<P...> return nil :: any end
 	),
 	Reject : typeof(
-		-- creates a derived signal that forwards values rejected by the filter
+		--[[
+			creates a derived signal that forwards values rejected by the filter
+		]]
 		function(self : classType<P...>, filter : (P...) -> boolean) : classType<P...> return nil :: any end
 	),
 	Transform : typeof(
-		-- creates a derived signal that forwards transformed values of the same type
+		--[[
+			creates a derived signal that forwards transformed values of the same type
+		]]
 		function(self : classType<P...>, transformer : (P...) -> P...) : classType<P...> return nil :: any end
 	),
 	Distinct : typeof(
-		-- creates a derived signal that suppresses consecutive duplicate keys using the first value when no selector is provided
+		--[[
+			creates a derived signal that suppresses consecutive duplicate keys using the first value when no selector is provided
+		]]
 		function(self : classType<P...>, keySelector : ((P...) -> any)?) : classType<P...> return nil :: any end
 	),
 	Debounce : typeof(
-		-- creates a derived signal that waits until the source has stopped firing for duration seconds then forwards the most recent values
+		--[[
+			creates a derived signal that waits until the source has stopped firing for duration seconds then forwards the most recent values
+		]]
 		function(self : classType<P...>, duration : number) : classType<P...> return nil :: any end
 	),
 	Throttle : typeof(
-		-- creates a derived signal that only forwards every duration seconds
+		--[[
+			creates a derived signal that only forwards every duration seconds
+		]]
 		function(self : classType<P...>, duration : number) : classType<P...> return nil :: any end
 	),
 	Delay : typeof(
-		-- creates a derived signal that forwards values after duration seconds
+		--[[
+			creates a derived signal that forwards values after duration seconds
+		]]
 		function(self : classType<P...>, duration : number) : classType<P...> return nil :: any end
 	),
 	Tap : typeof(
-		-- creates a derived signal that runs a callback and forwards values unchanged
+		--[[
+			creates a derived signal that runs a callback and forwards values unchanged
+		]]
 		function(self : classType<P...>, callback : (P...) -> ()) : classType<P...> return nil :: any end
 	),
 	Take : typeof(
-		-- creates a derived signal that forwards only the values from the first amount fires
+		--[[
+			creates a derived signal that forwards only the values from the first amount fires
+		]]
 		function(self : classType<P...>, amount : number) : classType<P...> return nil :: any end
 	),
 	Skip : typeof(
-		-- creates a derived signal that ignores the first amount fires but forwards the values of the rest
+		--[[
+			creates a derived signal that ignores the first amount fires but forwards the values of the rest
+		]]
 		function(self : classType<P...>, amount : number) : classType<P...> return nil :: any end
 	),
 	Merge : typeof(
-		-- creates a derived signal that forwards values from all provided signals
+		--[[
+			creates a derived signal that forwards values from all provided signals
+		]]
 		function(self : classType<P...>, ... : classType<P...>) : classType<P...> return nil :: any end
 	),
 	DisconnectAll : typeof(
-		-- disconnects every connection
+		--[[
+			disconnects every connection
+		]]
 		function(self : classType<P...>) end
 	),
 	Fire : typeof(
-		-- fires every connected callback with the provided values
+		--[[
+			fires every connected callback with the provided values
+		]]
 		function(self : classType<P...>, ... : P...) end
 	),
 	Wait : typeof(
-		-- yields until the signal fires and returns the fired values
+		--[[
+			yields until the signal fires and returns the fired values
+		]]
 		function(self : classType<P...>) : P... return nil :: any end
 	),
 	AWait : typeof(
-		-- yields until the signal fires or the timeout expires and returns whether it timed out followed by the fired values or no values on timeout
+		--[[
+			yields until the signal fires or the timeout expires and returns whether it timed out followed by the fired values or no values on timeout
+		]]
 		function(self : classType<P...>, timeoutDuration : number) : (boolean, P...) return nil :: any end
 	),
 	GetConnections : typeof(
-		-- returns every connection currently attached to the signal
+		--[[
+			returns every connection currently attached to the signal
+		]]
 		function(self : classType<P...>) : {connectionClassType<P...>} return nil :: any end
 	),
 	Destroy : typeof(
-		-- disconnects all connections and source connections
+		--[[
+			disconnects all connections and source connections
+		]]
 		function(self : classType<P...>) end
 	),
 	
@@ -129,7 +167,9 @@ type connectionClassContent<P...> = {
 }
 type connectionClassMethods<P...> = {
 	Disconnect : typeof(
-		-- disconnects the connection
+		--[[
+			disconnects the connection
+		]]
 		function(self : connectionClassType<P...>) end
 	),
 }
@@ -260,20 +300,24 @@ local function dispatchSnapshot<P...>(snapshot : snapshot<P...>, ... : P...)
 	end
 end
 
--- creates and returns a new signal
-module.new = function() : classType<>
-	local content : classContent<> = {
+--[[
+	creates and returns a new signal
+]]
+module.new = function<P...>() : classType<P...>
+	local content : classContent<P...> = {
 		_connectionCount = 0,
 	}
 	
 	return setmetatable(
 		content,
 		signalMT
-	) :: classType<>
+	) :: classType<P...>
 end
 
--- creates and returns a new signal that wraps the provided RBXScriptSignal
--- avoid anonymous chaining because destroying the final signal does not disconnect this wrapper, thus leaking memory
+--[[
+	creates and returns a new signal that wraps the provided RBXScriptSignal
+	avoid anonymous chaining because destroying the final signal does not disconnect this wrapper, thus leaking memory
+]]
 module.wrap = function(RBXSignal : RBXScriptSignal) : classType<>
 	local content : classContent<> = {
 		_connectionCount = 0,
