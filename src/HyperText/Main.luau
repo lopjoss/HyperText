@@ -109,7 +109,7 @@ HyperText.new = function(
 end
 
 --[[
-	Returns a full markups shaped dict with values/attributes emptied to nil. Used for updating an object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
+	Returns a full markups shaped dict with values/attributes emptied to nil, except for a stackable markup's stack, which retains it default stack entries. Used for updating an object's default markups. To delete an optional default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
 
 	```luau
 	local markups = HyperText.newMarkups()

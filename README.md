@@ -11,7 +11,13 @@ Paired tags apply a markup to enclosed content:
 <anim=wiggle dur=1 loop=true>Animated text</anim>
 ```
 
-Self-closing tags execute immediately:
+Stackable paired tags keep every nested instance active:
+
+```text
+<emitImg=123><emitImg=456>Both emitters apply here</emitImg></emitImg>
+```
+
+Self-closing tags do not use closing tags:
 
 ```text
 <img=123456789>
@@ -38,8 +44,10 @@ General behavior:
 - Arbitrary values such as font paths remain case-sensitive.
 - Raw newlines are ignored. Use `<br=1>` instead.
 - Literal `<` characters outside valid tags are unsupported.
-- Optional markups and attributes can be removed with `/`.
-- When updating default markups, use `HyperText.DELETE` instead of `/`.
+- Optional non-stackable paired markup values and optional attributes can be removed with `/`.
+- Stackable paired markup values cannot be removed with `/`; use the closing tag to end an active stack entry.
+- Self-closing markup values do not support `/` because each tag represents a single occurrence rather than persistent markup state.
+- When updating default markups, use `HyperText.DELETE` instead of `/`. To remove a stackable default entry, assign it to the corresponding stack index.
 - Destroying the container automatically destroys its HyperText object.
 
 > Very small text or certain fonts may occasionally position a character one pixel unevenly because fractional positions and sizes ultimately have to be rasterized onto the pixel grid. There is no fixing this.
@@ -248,11 +256,11 @@ Cycles the rendered content's color through the colors of a rainbow, with each c
 <details>
 <summary><code>emitImg</code></summary>
 
-Emits an image with the given ID as a particle effect from the rendered content. This markup can be deleted and also inherits the flipbook attributes from the `img` markup.
+Emits an image with the given ID as a particle effect from the rendered content. This markup is stackable and inherits the flipbook attributes from the `img` markup.
 
 <table>
-<tr><th>Luau value</th><td><code>number?</code></td></tr>
-<tr><th>ASCII value</th><td><code>asset ID | /</code></td></tr>
+<tr><th>Luau value</th><td><code>number</code></td></tr>
+<tr><th>ASCII value</th><td><code>asset ID</code></td></tr>
 </table>
 
 #### Attributes
@@ -412,7 +420,7 @@ The asset ID for the typewriter sound that will be played when actively renderin
 <details>
 <summary><code>shiny</code></summary>
 
-Adds shiny sparks to the rendered content. This markup uses the same attributes as the `emitImg` markup.
+Adds shiny sparks to the rendered content. This markup is stackable and uses the same attributes as the `emitImg` markup.
 
 <table>
 <tr><th>Luau value</th><td><code>boolean</code></td></tr>
@@ -424,7 +432,7 @@ Adds shiny sparks to the rendered content. This markup uses the same attributes 
 <details>
 <summary><code>fog</code></summary>
 
-Adds a fog effect to the rendered content. This markup uses the same attributes as the `emitImg` markup.
+Adds a fog effect to the rendered content. This markup is stackable and uses the same attributes as the `emitImg` markup.
 
 <table>
 <tr><th>Luau value</th><td><code>boolean</code></td></tr>
@@ -633,7 +641,7 @@ Creates and returns a new HyperText object.
 <details>
 <summary><code>.newMarkups() : markups</code></summary>
 
-Returns a full markups shaped dict with values/attributes emptied to nil. Used for updating an object's default markups. To delete a default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
+Returns a full markups shaped dict with values/attributes emptied to nil, except for a stackable markup's stack, which retains it default stack entries. Used for updating an object's default markups. To delete an optional default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
 
 ```luau
 local markups = HyperText.newMarkups()
@@ -655,7 +663,7 @@ markups.emitImg.stack[2] = HyperText.DELETE
 </details>
 
 <details>
-<summary><code>.insertStackEntry(markup : types.stack<T>, index : number) : T</code></summary>
+<summary><code>.insertStackEntry&lt;T&gt;(markup : types.stack&lt;T&gt;, index : number) : T</code></summary>
 
 Returns a new markup entry which is inserted into a stackable markup at the given index and receives the markup's default entry values. Negative or extremely large indices will cause unintended behaviour.
 
@@ -689,7 +697,7 @@ Renders the given text inside the object's container and applies the object's de
 <details>
 <summary><code>:CompleteRender()</code></summary>
 
-Skips all remaining render intervals immediately. If uncached text bounds are still being calculated asynchronously, this method may return before the render finishes.
+Skips all remaining render intervals immediately. If any uncached value is being fetched, this method may return before the render finishes.
 
 </details>
 
@@ -762,24 +770,55 @@ A boolean that indicates whether the object has any active render, despite it po
 
 ## Creating custom markups
 
-A custom markup requires matching definitions in `Types`, `Config`, and a markup data module.
-
 <details>
 <summary><code>1. Define the schema</code></summary>
 
-Add a key matching the markup name to the `markups` type in `Types.luau`.
+This schema is the source of truth for the value and attribute types that the data module that you'll create later must produce.
 
-Give it `value`, `attributes`, and `valueAttributes` fields. Optional value and attribute types must include `nil`. `valueAttributes` is keyed by each markup value that has its own attributes.
+Add a key matching the markup name to the `markups` type in `Types.luau`. A regular markup entry contains:
+
+- `value`: the converted value written after `=` in the tag.
+- `attributes`: attributes available for every value of the markup.
+- `valueAttributes`: attributes that only belong to particular markup values, keyed by those values.
+
+Include `nil` in a value's or attribute's type if their value is unrequired, meaning the user can remove them (this is not allowed for a markup's value if the markup is stackable or a self-closing markup). For example:
 
 ```luau
 pulse : {
-	value : boolean?,
+	value : ("glow" | "blink")?,
 	attributes : {
 		speed : number,
 		color : Color3?,
 	},
-	valueAttributes : {},
+	valueAttributes : {
+		glow : {
+			intensity : number,
+		},
+		blink : {
+			minimumTransparency : number?,
+		},
+	},
 },
+```
+
+For a stackable paired markup, wrap the entry shape in `stack<...>`:
+
+```luau
+pulse : stack<{
+	value : "glow" | "blink",
+	attributes : {
+		speed : number,
+		color : Color3?,
+	},
+	valueAttributes : {
+		glow : {
+			intensity : number,
+		},
+		blink : {
+			minimumTransparency : number?,
+		},
+	},
+}>,
 ```
 
 </details>
@@ -787,112 +826,289 @@ pulse : {
 <details>
 <summary><code>2. Add the defaults</code></summary>
 
-Add the markup to `DEFAULT_MARKUPS` in `Config.luau`.
+Add the markup to `DEFAULT_MARKUPS` in `Config.luau`. Its shape must match the entry in `Types.luau`.
 
-The `value`, `attributes`, and `valueAttributes` tables must match `Types`. Provide defaults for every required attribute and value-specific attribute. Optional values and attributes can be omitted or set to `nil`.
+Provide defaults for every required value, attribute, and value-specific attribute. Optional fields may be omitted or set to `nil`.
 
 ```luau
 pulse = {
 	value = nil,
 	attributes = {
 		speed = 1,
+		color = nil,
 	},
-	valueAttributes = {},
+	valueAttributes = {
+		glow = {
+			intensity = 1,
+		},
+		blink = {
+			minimumTransparency = .5,
+		},
+	},
 },
 ```
+
+A stackable markup instead stores its entry defaults in `_entryDefaultValues`:
+
+```luau
+pulse = {
+	stack = {},
+	_entryDefaultValues = {
+		value = "glow",
+		attributes = {
+			speed = 1,
+			color = nil,
+		},
+		valueAttributes = {
+			glow = {
+				intensity = 1,
+			},
+			blink = {
+				minimumTransparency = .5,
+			},
+		},
+	},
+},
+```
+
+`stack` contains entries that are active by default. It is normally empty.
 
 </details>
 
 <details>
 <summary><code>3. Create the data module</code></summary>
 
-Add a `ModuleScript` below `Markups/Paired` or `Markups/SelfClosing`.
+Use these examples as a reference to create your data module:
 
-All descendant data modules are discovered automatically. Clone the closest existing markup when possible.
+<details>
+<summary><code>Listed here is an example of a stackable paired markup data module corresponding to the stackable pulse schema and defaults above.</code></summary>
 
 ```luau
 --!strict
 
-local types = require("../../Types")
-local util = require("../../Util")
+local types = require("../../Types") -- HyperText types and data-module contracts.
+local util = require("../../Util") -- Reusable converters for markup values.
 
-local name : "pulse" = "pulse"
-local type_ : "paired" = "paired"
+local name : "pulse" = "pulse" -- Selects the pulse schema from types.markups.
+local type_ : "paired" = "paired" -- Declares this as a paired markup.
+local applyToImages : true = true -- Also applies the markup to inline images.
+local applyOnClear : true = true -- Also applies the markup while clearing.
 
-local module : types.dataModule<typeof(name), typeof(type_)> = {
-	name = name,
-	type = type_,
-	unrequired = true,
-	convert = util.stringToBoolean,
+local module : types.dataModule<
+	typeof(name), -- Selects the exact markup schema.
+	typeof(type_), -- Selects the paired-markup contract.
+	typeof(applyToImages), -- Enables inline-image support.
+	typeof(applyOnClear), -- Enables clearing support.
+	nil -- Unused self-closing behavior.
+> = {
+	name = name, -- Must match the key in types.markups.
+	type = type_, -- Must match the paired markup type.
+	stackable = true, -- Required when the markup schema uses stack<...>.
+	applyToImages = applyToImages, -- Allows onPrint to receive inline images.
+	applyOnClear = applyOnClear, -- Allows onPrint to run during clearing.
 
-	attributes = {
+	convert = function(value : string) : "glow" | "blink" -- Converts the raw tag value to its schema type.
+		
+	end,
+	unrequired = false, -- If set to true it allows the markup's optional value to be removed with "/" (this is only applicable to non-stackable markups).
+
+	attributes = { -- Converters for attributes available to every pulse value.
 		speed = {
-			convert = util.stringToNumber,
+			convert = function(value : string) : number
+				return util.stringToNumber(value, 0)
+			end,
 		},
 		color = {
 			convert = util.stringToColor3,
-			unrequired = true,
+			unrequired = true, -- Allows this optional attribute to be removed with "/".
 		},
 	},
 
-	valueAttributes = {},
+	valueAttributes = { -- Converters for attributes available only to their corresponding pulse value.
+		glow = {
+			intensity = {
+				convert = function(value : string) : number
+					return util.stringToNumber(value, 0)
+				end,
+			},
+		},
+		blink = {
+			minimumTransparency = {
+				convert = function(value : string) : number
+					return util.stringToNumber(value, 0, 1)
+				end,
+				unrequired = true,
+			},
+		},
+	},
 
-	onPrint = function(obj, printerData, spanData, updater)
-		-- Apply the markup to printerData.character
+	onConstruction = function( -- Runs after parsing the tag but before printing starts.
+		obj : types.hyperTextClassObject, -- HyperText object constructing the render.
+		markups : types.markups -- Deep-copied markup state at the tag's position.
+	)
+		
+	end,
+
+	validate = function(markups : types.markups) : boolean -- Determines whether the clearing effect should run.
+		
+	end,
+
+	getClearingDuration = function(markups : types.markups) : number -- Returns how long the clearing effect requires.
+		
+	end,
+
+	onPrint = function( -- Runs for every relevant printed entry.
+		obj : types.hyperTextClassObject, -- HyperText object printing the render.
+		printerData : types.printerDataRowEntry, -- Current character or image and its markup state.
+		spanData : types.onPrintMarkupSpanData, -- Geometry of the character and markup span.
+		updater : {[string] : (dt : number) -> ()}, -- Shared per-frame callback dictionary.
+		onClear : boolean -- Whether the markup is running during clearing.
+	)
+		for _, pulse in pairs(printerData.markups.pulse.stack) do
+			if pulse then
+				
+			end
+		end
 	end,
 }
 
 return module
 ```
 
-Every data module needs:
+</details>
 
-- A `name` field matching the key in `Types`.
-- A `type` field of `"paired"` or `"selfClosing"`.
-- A `convert` function that parses the tag's string value into the type from `Types`.
-- `attributes` and `valueAttributes` converter dictionaries.
-- `unrequired = true` when the markup value or attribute type is optional.
-- The appropriate rendering or construction callbacks.
-
-Value-specific converters use the same converter shape nested below each possible markup value. A converter must return the correctly typed value or throw for invalid input.
-
-The generic arguments of `types.dataModule` are:
+<details>
+<summary><code>Listed here is an example of a self-closing markup data module.</code></summary>
 
 ```luau
-types.dataModule<
-	markupName,
-	markupType,
-	applyToImages, -- applies only to paired markups
-	applyOnClear, -- applies only to paired markups
-	appendToCurrentWord -- applies only to self closing markups
->
+--!strict
+
+local types = require("../../Types") -- HyperText types and data-module contracts.
+local util = require("../../Util") -- Reusable converters for markup values.
+
+local name : "badge" = "badge" -- Selects the badge schema from types.markups.
+local type_ : "selfClosing" = "selfClosing" -- Declares this as a self-closing markup.
+local appendToCurrentWord : true = true -- Adds each markup instance to the current word, meaning it'll be included in layout and printing.
+
+local module : types.dataModule<
+	typeof(name), -- Selects the exact markup schema.
+	typeof(type_), -- Selects the self-closing markup contract.
+	nil, -- Unused paired-markup image behavior.
+	nil, -- Unused paired-markup clearing behavior.
+	typeof(appendToCurrentWord) -- Enables inline self-closing behavior.
+> = {
+	name = name, -- Must match the key in types.markups.
+	type = type_, -- Must match the self-closing markup type.
+	appendToCurrentWord = appendToCurrentWord, -- Includes the markup instance in layout and printing.
+	yieldFromIntervalOnPrint = true, -- Runs the normal typewriter interval before onPrint_.
+
+	convert = function(value : string) : "info" | "warning" -- Converts the raw tag value to its schema type.
+		
+	end,
+
+	attributes = { -- Converters for attributes available to every badge value.
+		size = {
+			convert = function(value : string) : number
+				return util.stringToNumber(value, 0)
+			end,
+		},
+		color = {
+			convert = util.stringToColor3,
+			unrequired = true, -- Allows this optional attribute to be removed with "/".
+		},
+	},
+
+	valueAttributes = { -- Converters for attributes available only to their corresponding badge value.
+		info = {
+			iconId = {
+				convert = function(value : string) : number
+					return util.stringToNumber(value, 0)
+				end,
+			},
+		},
+		warning = {
+			flash = {
+				convert = util.stringToBoolean,
+				unrequired = true,
+			},
+		},
+	},
+
+	onConstruction = function( -- Runs after parsing the markup instance but before printing starts.
+		obj : types.hyperTextClassObject, -- HyperText object constructing the render.
+		markups : types.markups -- Deep-copied markup state for this markup instance.
+	)
+		
+	end,
+
+	getSize = function( -- Returns how much layout space the markup instance occupies.
+		obj : types.hyperTextClassObject, -- HyperText object constructing the render.
+		markups : types.markups -- Markup state used to calculate the size.
+	) : Vector2
+		
+	end,
+
+	onPrint_ = function( -- Runs once when the printer reaches this markup instance.
+		obj : types.hyperTextClassObject, -- HyperText object printing the render.
+		markups : types.markups, -- Markup state belonging to this markup instance.
+		index : number, -- Index of the markup instance in the constructed row entries.
+		row : Frame, -- Rendered row containing the markup instance.
+		updater : {[string] : (dt : number) -> ()} -- Shared per-frame callback dictionary.
+	)
+		
+	end,
+}
+
+return module
 ```
 
-### Paired markup behavior
+</details>
 
-- `onPrint` receives the HyperText object, the current printer row entry, the position and size of the character and markup span, and an updater dictionary for per-frame work.
-- To apply the markup to inline images, set `applyToImages = true`, pass it as the third `dataModule` generic, and type the character as `TextLabel | ImageLabel`.
-- To run while text is being cleared, set `applyOnClear = true` and pass it as the fourth generic.
-- Clearing markups must implement `validate(markups) -> boolean`, `getClearingDuration(markups) -> number`, and `onPrint` with an additional `onClear` boolean.
-- If application order matters, add the markup name to `PRINT_PRIORITY` in `Config.luau`. Unlisted markups run first; listed markups then run from top to bottom.
-
-### Self-closing markup behavior
-
-- Structural mode leaves `appendToCurrentWord` unset.
-- Structural markups can implement `onConstruction(obj, markups)` to modify construction. See `br`.
-- Inline mode sets `appendToCurrentWord = true` and passes it as the fifth `dataModule` generic.
-- Inline markups must implement `getSize` for layout and `onPrint_` for delivery.
-- Set `yieldFromIntervalOnPrint = true` when the normal typewriter interval should run before `onPrint_`.
-
-Useful references:
-
-- `color` for a basic paired markup.
-- `anim` for attributes and image support.
-- `clearAnim` for clearing hooks.
-- `br` for structural self-closing construction.
-- `wait` for a zero-size inline self-closing action.
-- `img` for a rendered inline self-closing object.
-
-Keep the schema in `Types`, defaults in `Config`, and converter dictionaries in the data module synchronized. Their names and value types are checked by the `dataModule` type, so mismatches should be fixed instead of cast away.
+Place your data module directly inside `Markups/Paired` or `Markups/SelfClosing`. Only direct children of these folders are discovered.
 
 </details>
+
+### Data module behavior
+
+<details>
+<summary><code>onConstruction</code></summary>
+
+`onConstruction` is optional for paired markups, structural self-closing markups, and inline self-closing markups.
+
+It receives a deep-copied markup snapshot with the current tag's converted value and attributes already applied. Mutating it never changes the object's default or surrounding paired-markup state. For inline self-closing markups, however, the same snapshot is stored with the markup occurrence, so mutations affect the state later received by `getSize` and `onPrint_` for that occurrence.
+
+The callback may yield. HyperText waits for it as part of construction, making it useful for preloading resources, fetching data, or preparing cached values before printing starts.
+
+For paired markups, it runs for valid opening tags after their state has been applied, but not for closing tags. For self-closing markups, the snapshot includes that markup instance without permanently changing the surrounding paired-markup state.
+
+</details>
+
+<details>
+<summary><code>Paired onPrint behavior</code></summary>
+
+A paired markup's `onPrint` callback runs for every relevant non-whitespace row entry, even when an optional markup currently has no value or a stackable markup has no active entries. Check the markup value or stack before applying the effect.
+
+Several paired markups can run on the same character or image, so their callbacks may affect one another. When their order matters, configure it with `PRINT_PRIORITY` in `Config.luau`. Markups not included in the list run first; listed markups then run from top to bottom. If your markup depends on changes made by another, add both to the list and place yours below its dependency.
+
+</details>
+
+<details>
+<summary><code>Structural and inline self-closing markups</code></summary>
+
+A structural self-closing markup leaves `appendToCurrentWord` unset. HyperText constructs any accumulated word before calling `onConstruction`, allowing the callback to create or modify construction structure. Structural markups do not receive `getSize` or `onPrint_`; any corresponding print work must be scheduled during construction. The built-in `br` markup uses this mode.
+
+An inline self-closing markup sets `appendToCurrentWord = true` and passes its type as the fifth `types.dataModule` generic. The markup instance is included in word layout and printed later, so the module must implement `getSize` and `onPrint_`. The built-in `img`, `wait`, and `renderEvent` markups use this mode.
+
+Both modes can use `onConstruction`.
+
+</details>
+
+### Useful references
+
+- `color` for a minimal paired markup.
+- `anim` for attributes, value-specific attributes, updater work, and image support.
+- `clearAnim` for clearing hooks.
+- `emitImg` for a stackable paired markup and construction-time resource fetching.
+- `br` for structural self-closing construction.
+- `wait` for a zero-size inline self-closing action.
+- `img` for a rendered inline self-closing object with `onConstruction`, layout, and printing hooks.

@@ -682,7 +682,7 @@ export type hyperTextClassMethods = {
 	),
 	CompleteRender : typeof(
 		--[[
-			Skips all remaining render intervals immediately. If uncached text bounds are still being calculated asynchronously, this method may return before the render finishes.
+			Skips all remaining render intervals immediately. If any uncached value is being fetched, this method may return before the render finishes.
 		]]
 		function(
 			self : hyperTextClassObject
