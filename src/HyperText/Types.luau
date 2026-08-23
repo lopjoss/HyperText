@@ -329,9 +329,6 @@ type function createDataModule(
 	local attrs = markup:readproperty(types.singleton("attributes"))
 	local valueAttrs = markup:readproperty(types.singleton("valueAttributes"))
 	
-	local unrequiredType = isOptional(markupValue)
-		and types.singleton(true)
-		or types.optional(types.singleton(false))
 	local applyToImagesType = applyToImages:value()
 		and types.singleton(true)
 		or types.optional(types.singleton(false))
@@ -347,7 +344,6 @@ type function createDataModule(
 			{head = {required(markupValue)}}
 		),
 		[types.singleton("appendToCurrentWord")] = appendToCurrentWord,
-		[types.singleton("unrequired")] = unrequiredType,
 		[types.singleton("applyToImages")] = applyToImagesType,
 		[types.singleton("applyOnClear")] = applyOnClearType,
 		[types.singleton("attributes")] = createAttrConverters(attrs),
@@ -362,7 +358,12 @@ type function createDataModule(
 		local stackableType = isStackable
 			and types.singleton(true)
 			or types.optional(types.singleton(false))
-
+		local unrequiredType = isOptional(markupValue)
+			and not isStackable
+			and types.singleton(true)
+			or types.optional(types.singleton(false))
+			
+		type_[types.singleton("unrequired")] = unrequiredType
 		type_[types.singleton("stackable")] = stackableType
 		type_[types.singleton("onPrint")] = createDataModuleOnPrint(
 			applyToImages:value() and types.unknown or types.singleton(false),

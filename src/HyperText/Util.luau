@@ -82,7 +82,9 @@ util.getEmptyMarkups = function() : types.markups
 
 	for _, markup in pairs(markups :: types.markupsIndexable) do
 		local isStackable = markup.stack and true or false
+		local stackableMarkup = isStackable and markup :: types.stack<types.markupIndexable>
 		local markup = not isStackable and markup :: types.markupIndexable
+			or stackableMarkup and stackableMarkup._entryDefaultValues
 
 		if markup then
 			markup.value = nil
@@ -96,6 +98,10 @@ util.getEmptyMarkups = function() : types.markups
 				end
 			end
 		end
+
+		-- if stackableMarkup then
+		-- 	table.clear(stackableMarkup.stack)
+		-- end
 	end
 
 	return markups
