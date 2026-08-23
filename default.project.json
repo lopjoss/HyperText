@@ -12,8 +12,8 @@
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "testing": {
-          "$path": "src/testing.client.luau"
+        "Testing": {
+          "$path": "src/Tests/Testing.client.luau"
         }
       }
     },
