@@ -879,7 +879,7 @@ types.dataModule<
 ### Self-closing markup behavior
 
 - Structural mode leaves `appendToCurrentWord` unset.
-- Structural markups can implement `onConstruction(obj, markups, rowIndex)` to modify construction. See `br`.
+- Structural markups can implement `onConstruction(obj, markups)` to modify construction. See `br`.
 - Inline mode sets `appendToCurrentWord = true` and passes it as the fifth `dataModule` generic.
 - Inline markups must implement `getSize` for layout and `onPrint_` for delivery.
 - Set `yieldFromIntervalOnPrint = true` when the normal typewriter interval should run before `onPrint_`.

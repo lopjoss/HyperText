@@ -2,6 +2,7 @@
 
 local TextService = game:GetService("TextService")
 
+local memoizer = require("./Memoizer")
 local types = require("./Types")
 local config = require("./Config")
 
@@ -378,8 +379,7 @@ util.updateMarkups = function(
 	return previousValue, previousAttrsValues, not revertStack
 end
 
-local MAX_RETRIES = 5
-local textBoundsCache : {
+type schema = {
 	[string] : {
 		[number | string] : {
 			[number] : {
@@ -389,79 +389,41 @@ local textBoundsCache : {
 			}
 		}
 	}
-} = {}
+}
+
+local textBoundsCache = memoizer.new<<schema>>(
+	5,
+	config.MAX_TEXTBOUNDS_CACHE_RECORDS
+)
+
 util.fetchTextBounds = function(
 	str : string,
 	markups : types.markups,
 	proportionalSize : number?
 ) : Vector2
 	local styleEnum = markups.italic.value and Enum.FontStyle.Italic or Enum.FontStyle.Normal
-	local byFont = textBoundsCache[str]
-	local bySize = byFont and byFont[markups.font.value]
-	local byWeight = bySize and bySize[proportionalSize or markups.size.value]
-	local byStyle = byWeight and byWeight[markups.weight.value]
-	local cached = byStyle and byStyle[styleEnum]
+	local fetchSchema : memoizer.fetchingSchema<schema> = {
+		[str] = {
+			[markups.font.value] = {
+				[proportionalSize or markups.size.value] = {
+					[markups.weight.value] = {
+						[styleEnum] = function()
+							local params = Instance.new("GetTextBoundsParams")
+							params.Text = str
+							params.Font = typeof(markups.font.value) == "string"
+								and Font.new(markups.font.value, markups.weight.value, styleEnum)
+								or Font.fromId(markups.font.value :: number, markups.weight.value, styleEnum)
+							params.Size = proportionalSize or markups.size.value
 
-	if cached then
-		return cached
-	end
-
-	local params = Instance.new("GetTextBoundsParams")
-	params.Text = str
-	params.Font = typeof(markups.font.value) == "string"
-		and Font.new(markups.font.value, markups.weight.value, styleEnum)
-		or Font.fromId(markups.font.value :: number, markups.weight.value, styleEnum)
-	params.Size = proportionalSize or markups.size.value
-
-	local retries = 0
-
-	local function fetch() : Vector2
-		local success, textBounds = pcall(function()			
-			return TextService:GetTextBoundsAsync(params)
-		end)
-
-		if success then
-			local byFont = textBoundsCache[str]
-			if not byFont then
-				byFont = {}
-				textBoundsCache[str] = byFont
-			end
-
-			local bySize = byFont[markups.font.value]
-			if not bySize then
-				bySize = {}
-				byFont[markups.font.value] = bySize
-			end
-
-			local byWeight = bySize[proportionalSize or markups.size.value]
-			if not byWeight then
-				byWeight = {}
-				bySize[proportionalSize or markups.size.value] = byWeight
-			end
-
-			local byStyle = byWeight[markups.weight.value]
-			if not byStyle then
-				byStyle = {}
-				byWeight[markups.weight.value] = byStyle
-			end
-
-			byStyle[styleEnum] = textBounds
-
-			return textBounds
-		else
-			if retries < MAX_RETRIES then
-				retries += 1
-
-				return fetch()
-			else
-				warn("Failed to fetch text bounds: " .. tostring(textBounds))
-
-				return Vector2.zero
-			end
-		end
-	end
-
-	return fetch()
+							return TextService:GetTextBoundsAsync(params)
+						end
+					}
+				}
+			}
+		}
+	}
+	
+	return textBoundsCache:Get(fetchSchema)
 end
 
 util.removeEntryFromTransformUpdater = function(

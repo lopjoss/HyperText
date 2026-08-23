@@ -5,7 +5,7 @@ local HttpService = game:GetService("HttpService")
 
 local types = require("../../Types")
 local util = require("../../Util")
-local applyFlipbookEffect = require("./ApplyFlipbookEffect")
+local flipbookEffect = require("./FlipbookEffect")
 
 return function(
 	obj : types.hyperTextClassObject,
@@ -76,7 +76,7 @@ return function(
 					local size = util.getRandomFromRange(attributes.startSize) 
 					img.Size = UDim2.fromScale(size * attributes.aspectRatio, size)
 					
-					applyFlipbookEffect(
+					flipbookEffect.applyFlipbookEffect(
 						img,
 						attributes,
 						updater

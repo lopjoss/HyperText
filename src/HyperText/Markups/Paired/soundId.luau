@@ -1,10 +1,59 @@
 --!strict
 
 local ContentProvider = game:GetService("ContentProvider")
+local MarketplaceService = game:GetService("MarketplaceService")
+local SoundService = game:GetService("SoundService")
 
 local types = require("../../Types")
 local util = require("../../Util")
 local config = require("../../Config")
+local memoizer = require("../../Memoizer")
+
+type schema = {[string] : Sound}
+
+local SFXCache = memoizer.new<<schema>>(
+	5,
+	config.MAX_TYPEWRITER_SFX_CACHE_RECORDS
+)
+
+local function getSFXCacheFetchingSchema(soundId : string) : memoizer.fetchingSchema<schema>
+	return {
+		[soundId] = function()
+			local fetchStatus : Enum.AssetFetchStatus?
+			local sound : Sound?
+			local success, result = pcall(function()
+				local snippet = tonumber(soundId:sub(string.len("rbxassetid://") + 1))
+
+				if snippet then
+					return MarketplaceService:GetProductInfoAsync(snippet)
+				else
+					error("Not a valid asset ID", 0)
+				end
+			end)
+
+			if success and result and result.AssetTypeId == 3 then
+				sound = Instance.new("Sound")
+				sound.SoundId = soundId
+	
+				ContentProvider:PreloadAsync({sound}, function(_, status)
+					fetchStatus = status
+				end)
+			end
+
+			if not sound or fetchStatus ~= Enum.AssetFetchStatus.Success then
+				if sound then
+					sound:Destroy()
+				end
+
+				local errmsg = not sound and result or fetchStatus and fetchStatus.Name
+
+				error(`Failed to load sound with asset ID {soundId}: {errmsg}`, 0)
+			end
+
+			return sound
+		end
+	}
+end
 
 local name : "soundId" = "soundId"
 local type_ : "paired" = "paired"
@@ -23,93 +72,77 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 
 		if 
 			printerData.markups.soundId.value
-			and not obj._loadingTypewriterSfx
+			and not obj._fetchingTypewriterSFX
 			and not obj._ignoreIntervals
 			and not isWhitespace
 			and (
-				not obj._nextTypewriterSfxTime
-					or t >= obj._nextTypewriterSfxTime
+				not obj._nextTypewriterSFXTime
+					or t >= obj._nextTypewriterSFXTime
 			)
 		then
-			local cached = obj._cachedTypewriterSound
+			local soundId = typeof(printerData.markups.soundId.value) == "string"
+				and printerData.markups.soundId.value
+				or "rbxassetid://" .. printerData.markups.soundId.value
+			local renderId = obj._renderId
 
-			if 
-				not cached
-				or cached.SoundId ~= (
-					typeof(printerData.markups.soundId.value) == "string"
-						and printerData.markups.soundId.value
-						or "rbxassetid://" .. printerData.markups.soundId.value
-				)
-			then
-				if cached then
-					cached:Destroy()
-				end
+			obj._fetchingTypewriterSFX = true
 
-				obj._loadingTypewriterSfx = true
-
-				local sound = Instance.new("Sound", script)
-				sound.Volume = printerData.markups.soundId.attributes.volume
-				sound.SoundId = typeof(printerData.markups.soundId.value) == "string"
-					and printerData.markups.soundId.value
-					or "rbxassetid://" .. printerData.markups.soundId.value
-
-				obj._cachedTypewriterSound = sound
-
-				if not sound.IsLoaded then
-					task.spawn(function()
-						local status: Enum.AssetFetchStatus?
-						local renderId = obj._renderId
-						
-						ContentProvider:PreloadAsync({sound}, function(
-							assetId: string,
-							fetchStatus: Enum.AssetFetchStatus
-						)
-							status = fetchStatus
-						end)
-						
-						obj._loadingTypewriterSfx = false
-						
-						if status == Enum.AssetFetchStatus.Success then
-							if obj.rendering and obj._renderId == renderId then
-								sound:Play()
-							end
-						else
-							warn("Failed to load sound " .. sound.SoundId .. ": " .. tostring(status))
+			task.spawn(function()
+				local success, sound = pcall(function()
+					if obj._currentTypewriterSFX and obj._currentTypewriterSFX.SoundId == soundId then
+						return obj._currentTypewriterSFX
+					else
+						if obj._currentTypewriterSFX then
+							obj._currentTypewriterSFX:Destroy()
+							obj._currentTypewriterSFX = nil
 						end
-					end)
-				else
-					obj._loadingTypewriterSfx = false
 
-					sound:Play()
+						local sound = SFXCache:Get(getSFXCacheFetchingSchema(soundId)):Clone()
+						sound.Parent = SoundService
+
+						return sound
+					end
+				end)
+
+				if obj._renderId == renderId then
+					if success then
+						obj._currentTypewriterSFX = sound
+
+						if sound.IsPlaying then
+							sound:Stop()
+						end
+
+						sound.Volume = printerData.markups.soundId.attributes.volume
+						sound:Play()
+
+						obj._nextTypewriterSFXTime = t + math.max(
+							config.MIN_TYPEWRITER_SFX_INTERVAL,
+							printerData.markups.interval.value
+						)
+					else
+						warn(`Failed to load sound with asset id {soundId}: {sound}`)
+					end
+
+					obj._fetchingTypewriterSFX = false
+				elseif success then
+					sound:Destroy()
 				end
-			else
-				if cached.IsPlaying then
-					cached:Stop()
-				end
-
-				cached.Volume = printerData.markups.soundId.attributes.volume
-				cached:Play()
-
-				obj._nextTypewriterSfxTime = t + math.max(
-					config.MIN_TYPEWRITER_SFX_INTERVAL,
-					printerData.markups.interval.value
-				)
-			end
+			end)
 		end
 	end,
 	convert = function(value : string)
-		local new : string? = value
+		local soundId = value
 
 		local success = pcall(function()
 			return util.stringToNumber(value)
 		end)
-		if not success then
-			new = value
-		else
-			new = "rbxassetid://" .. tostring(value)
+		if success then
+			soundId = "rbxassetid://" .. value
 		end
 
-		return new
+		SFXCache:Get(getSFXCacheFetchingSchema(soundId))
+
+		return soundId
 	end,
 	attributes = {
 		volume = {

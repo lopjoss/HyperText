@@ -3,22 +3,30 @@
 	- classes
 	- bidirectional support
 	- applyToWhitespace field in markup datamodule
-	- caching during construction / parsing so there won't be any print delays from fetching
+	v4.2:
+	- note in readme that paired onprints always fire unlike self closing onprints
+	- validate & cache applicable values when updating default markups
+	- add an insertionIndex to stacks instead of looping all the time
 	- add bgImg markup
-	- baseFromDefaults global attribute
+	- make img markups accept string asset ids
 ]]
 
---[[	v4.2.3		9-8-2026
+--[[	v4.2.0		9-8-2026
+
+	ADDITIONS:
+		added caching limits in configs
 
 	CHANGES:
+		typewriter sounds are now preloaded during parsing, preventing delays when the soundId markup changes during rendering.
+		editable image sizes for flipbook effects are now fetched during construction, so flipbook images appear immediately instead of popping in after their size has been fetched.
 		the parser now warns if it finds an opening tag with no assigned value or attributes, which it now won't process
 
 	ADDITIONS:
-		certian markups have now the possiblity to be stacked, meaning nested tag pairs will all be applied
+		image emitting markups have now the possiblity to be stacked, meaning nested tag pairs will all be applied
 
 ]]
 
---[[	v4.1.3		9-8-2026
+--[[	v4.1.0		9-8-2026
 
 	ADDITIONS:
 		added the renderEvent markup and the .renderEvent signal

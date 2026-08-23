@@ -3,7 +3,7 @@
 local types = require("../../Types")
 local util = require("../../Util")
 local appendFlipbookAttrsConverters = require("../Helpers/AppendFlipbookAttrsConverters")
-local applyFlipbookEffect = require("../Helpers/ApplyFlipbookEffect")
+local flipbookEffect = require("../Helpers/FlipbookEffect")
 
 local dataModules = util.getAllMarkupDataModules({"img"})
 local attrsConverters : types.imgAttrsConverters = {
@@ -36,6 +36,7 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 	type = type_,
 	name = name,
 	appendToCurrentWord = appendToCurrentWord,
+	yieldFromIntervalOnPrint = true,
 
 	getSize = function(obj : types.hyperTextClassObject, markups : types.markups)
 		local height = markups.size.value * markups.img.attributes.height
@@ -43,7 +44,14 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 
 		return Vector2.new(width, height)
 	end,
-	yieldFromIntervalOnPrint = true,
+	onConstruction = function(
+		obj : types.hyperTextClassObject,
+		markups : types.markups
+	)
+		if markups.img.attributes.flipbookLayout then
+			flipbookEffect.cacheImageSize("rbxassetid://" .. markups.img.value)
+		end
+	end,
 	onPrint_ = function(
 		obj : types.hyperTextClassObject,
 		markups : types.markups,
@@ -88,7 +96,7 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 
 		table.insert(obj._printerData.rowEntries, printerRowEntry)
 		
-		applyFlipbookEffect(
+		flipbookEffect.applyFlipbookEffect(
 			image,
 			markups.img.attributes,
 			updater

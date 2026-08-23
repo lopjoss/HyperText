@@ -11,8 +11,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 	
 	onConstruction = function(
 		obj : types.hyperTextClassObject,
-		markups : types.markups,
-		rowIndex : number
+		markups : types.markups
 	)
 		for i = 1, markups.br.value do
 			obj:_CreateRow(markups)

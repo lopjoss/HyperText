@@ -36,20 +36,68 @@ config.COLOR_SHORTCUTS.gray         = Color3.fromRGB(150, 150, 150)
 config.COLOR_SHORTCUTS.darkgray     = Color3.fromRGB(80, 80, 80)
 config.COLOR_SHORTCUTS.lightgray    = Color3.fromRGB(220, 220, 220)
 
--- the value of which you must set applicable markups or attributes to in order to delete it
+--[[
+	the value of which you must set applicable markups or attributes to in
+	order to delete it
+]]
 config.DELETE_MARKUP_VALUE_SYNTAX = "/"
 
--- min possible interval between typewriter sounds
+--[[
+	the minimum interval between typewriter sounds
+]]
 config.MIN_TYPEWRITER_SFX_INTERVAL = .065
 
--- fraction of the width of the container
--- any word wider than this value which doesn't fit on the current row will be split instead of being fully moved to a new row
-config.MAX_WORD_WIDTH_FRACTION = .3
+--[[
+	for any cache record limit config note that:
+	- if the amount of cache records exceeds this limit, the oldest cache
+	  record will be evicted
+	- set it to nil for there to be no limit
+	- cache is shared between all objects
+]]
+--[[
+	the maximum amount of typewriter sounds which can be cached at once
 
--- the max amount of characters of a render's text displayed for debugging when overflowing
+	note that:
+	this is meant to evict sounds of old / unused renders from cache, but
+	it does not guarantee that only unused sounds will get evicted, so a low
+	limit could mean that a render which uses a sound that got evicted while
+	its rendering has to fetch it back which could cause delays in SFX
+]]
+config.MAX_TYPEWRITER_SFX_CACHE_RECORDS = 50
+
+--[[
+	the maximum amount of image sizes (vector2's) which can be cached at once
+	(used for flipbook effects)
+
+	the same notice of the typewriter SFX cache applies here
+]]
+config.MAX_FLIPBOOK_IMG_SIZE_CACHE_RECORDS = 1000
+
+--[[
+	the maximum amount of individual character's textbounds which can be cached
+	at once 
+]]
+config.MAX_TEXTBOUNDS_CACHE_RECORDS = 500
+
+--[[	
+	any word wider than this fraction of the container's width which doesn't
+	fit on the current row will be split instead of being fully moved to a
+	new row
+]]
+config.SPLIT_WORD_AT_FRACTION = .3
+
+--[[
+	the max amount of characters of a render's text displayed for debugging
+	when overflowing
+]]
 config.DEBUG_OVERFLOW_MAX_TEXT_LENGTH = 40
 
--- default markup and attribute values for all objects (must include every markup and attribute)
+--[[
+	default markup and attribute values for all objects
+
+	(must include every markup and attribute, unless optional ones must be
+	deleted by default, in that case you can leave those out)
+]]
 local DEFAULT_MARKUPS : types.markups = {
 	color = {
 		value = Color3.new(1, 1, 1),
@@ -229,58 +277,64 @@ local DEFAULT_MARKUPS : types.markups = {
 		valueAttributes = {},
 	},
 	shiny = {
-		value = false,
-		attributes = {
-			color = Color3.fromRGB(255, 255, 255),
-			aspectRatio = .66,
-			rate = .75,
-			chance = 50,
-			lifetime = NumberRange.new(2, 2.75),
-			velX = NumberRange.new(0, 0),
-			velY = NumberRange.new(0, 0),
-			rotVel = NumberRange.new(0, 0),
-			accelX = NumberRange.new(0, 0),
-			accelY = NumberRange.new(-.25, -.15),
-			startTrans = NumberRange.new(0, 0),
-			endTrans = NumberRange.new(1, 1),
-			startSize = NumberRange.new(.5, .6),
-			endSize = NumberRange.new(.2, .3),
-			startPosX = NumberRange.new(-.5, .5),
-			startPosY = NumberRange.new(-.5, .5),
-			startRot = NumberRange.new(0, 0),
-			applyTransform = true,
-			flipbookFreq = 1,
-			flipbookLoop = false,
-			flipbookReverse = false,
-		},
-		valueAttributes = {},
+		stack = {},
+		_entryDefaultValues = {
+			value = false,
+			attributes = {
+				color = Color3.fromRGB(255, 255, 255),
+				aspectRatio = .66,
+				rate = .75,
+				chance = 50,
+				lifetime = NumberRange.new(2, 2.75),
+				velX = NumberRange.new(0, 0),
+				velY = NumberRange.new(0, 0),
+				rotVel = NumberRange.new(0, 0),
+				accelX = NumberRange.new(0, 0),
+				accelY = NumberRange.new(-.25, -.15),
+				startTrans = NumberRange.new(0, 0),
+				endTrans = NumberRange.new(1, 1),
+				startSize = NumberRange.new(.5, .6),
+				endSize = NumberRange.new(.2, .3),
+				startPosX = NumberRange.new(-.5, .5),
+				startPosY = NumberRange.new(-.5, .5),
+				startRot = NumberRange.new(0, 0),
+				applyTransform = true,
+				flipbookFreq = 1,
+				flipbookLoop = false,
+				flipbookReverse = false,
+			},
+			valueAttributes = {},
+		}
 	},
 	fog = {
-		value = false,
-		attributes = {
-			color = Color3.fromRGB(130, 130, 130),
-			aspectRatio = 1,
-			rate = 2,
-			chance = 80,
-			lifetime = NumberRange.new(5, 7),
-			velX = NumberRange.new(0, 0),
-			velY = NumberRange.new(0, 0),
-			rotVel = NumberRange.new(-40, 40),
-			accelX = NumberRange.new(-.15, .15),
-			accelY = NumberRange.new(-.15, .15),
-			startTrans = NumberRange.new(.9, .95),
-			endTrans = NumberRange.new(1, 1),
-			startSize = NumberRange.new(1, 2),
-			endSize = NumberRange.new(4, 5),
-			startPosX = NumberRange.new(-.5, .5),
-			startPosY = NumberRange.new(-.5, .5),
-			startRot = NumberRange.new(-360, 360),
-			applyTransform = true,
-			flipbookFreq = 1,
-			flipbookLoop = false,
-			flipbookReverse = false,
-		},
-		valueAttributes = {},
+		stack = {},
+		_entryDefaultValues = {
+			value = false,
+			attributes = {
+				color = Color3.fromRGB(130, 130, 130),
+				aspectRatio = 1,
+				rate = 2,
+				chance = 80,
+				lifetime = NumberRange.new(5, 7),
+				velX = NumberRange.new(0, 0),
+				velY = NumberRange.new(0, 0),
+				rotVel = NumberRange.new(-40, 40),
+				accelX = NumberRange.new(-.15, .15),
+				accelY = NumberRange.new(-.15, .15),
+				startTrans = NumberRange.new(.9, .95),
+				endTrans = NumberRange.new(1, 1),
+				startSize = NumberRange.new(1, 2),
+				endSize = NumberRange.new(4, 5),
+				startPosX = NumberRange.new(-.5, .5),
+				startPosY = NumberRange.new(-.5, .5),
+				startRot = NumberRange.new(-360, 360),
+				applyTransform = true,
+				flipbookFreq = 1,
+				flipbookLoop = false,
+				flipbookReverse = false,
+			},
+			valueAttributes = {},
+		}
 	},
 	gradient = {
 		value = false,
@@ -372,6 +426,20 @@ local DEFAULT_MARKUPS : types.markups = {
 		},
 		valueAttributes = {},
 	},
+	bgImg = {
+		stack = {},
+		_entryDefaultValues = {
+			value = 0,
+			attributes = {
+				trans = 0,
+				color = Color3.fromRGB(255, 255, 255),
+				flipbookFreq = 1,
+				flipbookLoop = false,
+				flipbookReverse = false,
+			},
+			valueAttributes = {}
+		}
+	},
 	br = {
 		value = 0,
 		attributes = {},
@@ -396,8 +464,12 @@ config.SHINY_IMG_ID = 115010102642915
 -- fog markup image id
 config.FOG_IMG_ID = 122434532
 
--- the order in which markups are applied from top to bottom, the ones left out are applied first
--- don't change this unless you know what you're doing
+--[[
+	the order in which markups are applied from top to bottom, the ones left out
+	are applied first
+	
+	don't change this unless you know what you're doing
+]]
 local PRINT_PRIORITY : {types.markup} = {
 	-- needs the character's text transparency to be finalized
 	"stroke",

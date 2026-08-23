@@ -383,14 +383,16 @@ methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
 			task.cancel(self._waitMarkupThread)
 		end
 		
-		if self._cachedTypewriterSound then
-			self._cachedTypewriterSound:Stop()
+		if self._currentTypewriterSFX then
+			self._currentTypewriterSFX:Stop()
 		end
 
-		self._nextTypewriterSfxTime = nil
+		self._nextTypewriterSFXTime = nil
 		self._pausedRender = false
 		self.rendering = false
-		
+		self._constructing = false
+		self._fetchingTypewriterSFX = false
+
 		if not instant then
 			if self._clearingRender then
 				return
@@ -504,8 +506,9 @@ end
 
 methods.GetPlainText = function(self : types.hyperTextClassObject) : string?
 	local index = self._constructionScheduler.index
+	local constructing = self._constructing
 	
-	if index then
+	if index and not constructing then
 		self._constructionScheduler:Iterate(nil, {
 			PARSER_APPEND_STRING_SCHEDULER_ID,
 			PARSER_APPEND_WHITESPACE_SCHEDULER_ID
@@ -536,8 +539,9 @@ methods.Destroy = function(self : types.hyperTextClassObject)
 	
 	self._destroyCon:Disconnect()
 	
-	if self._cachedTypewriterSound then
-		self._cachedTypewriterSound:Destroy()
+	if self._currentTypewriterSFX then
+		self._currentTypewriterSFX:Destroy()
+		self._currentTypewriterSFX = nil
 	end
 	
 	updater[self._rowEntriesTransformUpdaterId] = nil
@@ -1039,7 +1043,7 @@ methods._Construct = function(
 				elseif
 					rowData.width > 0
 					and (
-						wordWidth < containerWidth * config.MAX_WORD_WIDTH_FRACTION
+						wordWidth < containerWidth * config.SPLIT_WORD_AT_FRACTION
 						or not dashSplitEntryIndex
 							and not atomicSplitEntryIndex
 							and not preAtomicSplitEntryIndex
@@ -1818,8 +1822,20 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 													table.insert(markupHistory, 1, markupType)
 													
 													self._constructionScheduler:Append(function()
-														self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
-														self:_CreateSpan(markupType)
+														if self._constructionMarkups then
+															self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
+
+															if dataModule.onConstruction then
+																local markups = util.deepCopy(self._constructionMarkups)
+																
+																dataModule.onConstruction(
+																	self,
+																	markups
+																)
+															end
+
+															self:_CreateSpan(markupType)
+														end
 													end)
 												else
 													warn(
@@ -1868,15 +1884,14 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 
 															util.updateMarkups(markups, markupType, convertedValue, attrsValues)
 
-															if not dataModule.appendToCurrentWord then
-																if dataModule.onConstruction then
-																	dataModule.onConstruction(
-																		self,
-																		markups,
-																		#self._constructionData.rows
-																	)
-																end
-															else
+															if dataModule.onConstruction then
+																dataModule.onConstruction(
+																	self,
+																	markups
+																)
+															end
+															
+															if dataModule.appendToCurrentWord then
 																self:_AppendSelfClosingMarkupToCurrentWord(
 																	markupType,
 																	tagEndPos,

@@ -262,8 +262,7 @@ type function createDataModuleOnConstruction(
 			{
 				head = {
 					hyperTextClassObjectType,
-					markupsType,
-					types.number,
+					markupsType
 				}
 			},
 			{
@@ -353,6 +352,10 @@ type function createDataModule(
 		[types.singleton("applyOnClear")] = applyOnClearType,
 		[types.singleton("attributes")] = createAttrConverters(attrs),
 		[types.singleton("valueAttributes")] = createValueAttrConverters(valueAttrs),
+		[types.singleton("onConstruction")] = createDataModuleOnConstruction(
+			hyperTextClassObjectType,
+			markupsType
+		)
 	}
 	
 	if moduleType:value() == "paired" then
@@ -392,11 +395,6 @@ type function createDataModule(
 				markupsType,
 				frameType
 			)
-		else
-			type_[types.singleton("onConstruction")] = createDataModuleOnConstruction(
-				hyperTextClassObjectType,
-				markupsType
-			)
 		end
 	end
 		
@@ -418,6 +416,7 @@ export type dataModuleLoose = {
 	unrequired : boolean?,
 	attributes : dataModuleMarkupAttrs,
 	valueAttributes : dataModuleMarkupValueAttrs,
+	onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>
 } & (
 	{
 		type : "paired",
@@ -442,7 +441,6 @@ export type dataModuleLoose = {
 	}
 	| {
 		type : "selfClosing",
-		onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>,
 		appendToCurrentWord : boolean?,
 		yieldFromIntervalOnPrint : boolean?,
 		onPrint_ : createSelfClosingMarkupDataModuleOnPrint<hyperTextClassObject, markups, Frame>?,
@@ -462,7 +460,7 @@ export type dataModule<
 	appendToCurrentWord,
 	applyOnClear,
 	
-	hyperTextClassObject,
+	any, --hyperTextClassObject, (this reaches the limits of luau's type solver)
 	onPrintMarkupSpanData,
 	markups,
 	Frame,
@@ -638,11 +636,11 @@ export type hyperTextClassContent = {
 		}
 	}?,
 	_ignoreIntervals : boolean?,
-	_cachedTypewriterSound : Sound?,
 	_currentWord : word?,
 	_markupIndices : {[string] : number}?,
-	_nextTypewriterSfxTime : number?,
-	_loadingTypewriterSfx : boolean?,
+	_fetchingTypewriterSFX : boolean?,
+	_nextTypewriterSFXTime : number?,
+	_currentTypewriterSFX : Sound?,
 }
 export type hyperTextClassMethods = {
 	UpdateDefaultMarkups : typeof(
@@ -1023,16 +1021,16 @@ export type markups = {
 		},
 		valueAttributes : {},
 	},
-	shiny : {
+	shiny : stack<{
 		value : boolean,
 		attributes : emitImgAttrs & flipbookAttrs,
 		valueAttributes : {},
-	},
-	fog : {
+	}>,
+	fog : stack<{
 		value : boolean,
 		attributes : emitImgAttrs & flipbookAttrs,
 		valueAttributes : {},
-	},
+	}>,
 	rainbow : {
 		value : boolean,
 		attributes : {

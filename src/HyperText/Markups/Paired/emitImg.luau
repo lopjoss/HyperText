@@ -4,6 +4,7 @@ local types = require("../../Types")
 local util = require("../../Util")
 local emitImage = require("../Helpers/EmitImage")
 local emitImgAttrsConverters = require("../Helpers/EmitImgAttrsConverters")
+local FlipbookEffect = require("../Helpers/FlipbookEffect")
 
 local name : "emitImg" = "emitImg"
 local type_ : "paired" = "paired"
@@ -13,6 +14,23 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 	name = name,
 	applyToImages = applyToImages,
 
+	onConstruction = function(
+		obj : types.hyperTextClassObject,
+		markups : types.markups
+	)
+		local i = 0
+		for j, _ in pairs(markups.emitImg.stack) do
+			if j > i then
+				i = j
+			end
+		end
+
+		local lastEntry = markups.emitImg.stack[i]
+		
+		if lastEntry and lastEntry.attributes.flipbookLayout then
+			FlipbookEffect.cacheImageSize("rbxassetid://" .. lastEntry.value)
+		end
+	end,
 	onPrint = function(
 		obj : types.hyperTextClassObject,
 		printerData : types.printerDataRowEntry,
