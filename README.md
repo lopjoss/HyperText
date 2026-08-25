@@ -138,7 +138,7 @@ The font used for the rendered text.
 
 <table>
 <tr><th>Luau value</th><td><code>string | number</code></td></tr>
-<tr><th>ASCII value</th><td><code>font family path | asset ID</code></td></tr>
+<tr><th>ASCII value</th><td><code>font family path | asset URI | asset ID</code></td></tr>
 </table>
 
 </details>
@@ -402,7 +402,7 @@ The interval in seconds between each cleared character when calling `:Clear()`. 
 <details>
 <summary><code>soundId</code></summary>
 
-The asset ID for the typewriter sound that will be played when actively rendering text. This markup can be deleted.
+The asset ID or URI for the typewriter sound that will be played when actively rendering text. This markup can be deleted.
 
 <table>
 <tr><th>Luau value</th><td><code>(number | string)?</code></td></tr>
