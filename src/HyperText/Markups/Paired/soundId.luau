@@ -47,7 +47,7 @@ local function getSFXCacheFetchingSchema(soundId : string) : memoizer.fetchingSc
 
 				local errmsg = not sound and result or fetchStatus and fetchStatus.Name
 
-				error(`Failed to load sound with asset ID {soundId}: {errmsg}`, 0)
+				error(`Failed to load sound with asset URI "{soundId}": {errmsg}`, 0)
 			end
 
 			return sound
@@ -120,7 +120,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 							printerData.markups.interval.value
 						)
 					else
-						warn(`Failed to load sound with asset id {soundId}: {sound}`)
+						warn(`Failed to fetch sound with asset URI "{soundId}": {sound}`)
 					end
 
 					obj._fetchingTypewriterSFX = false
@@ -131,29 +131,29 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 		end
 	end,
 	validateDefaultValue = function(value : number | string)
-		local soundId : string
+		local URI : string
 
 		if type(value) == "number" then
-			soundId = "rbxassetid://" .. tostring(value)
+			URI = "rbxassetid://" .. tostring(value)
 		else
-			soundId = value
+			URI = value
 		end
 
-		SFXCache:Get(getSFXCacheFetchingSchema(soundId))
+		SFXCache:Get(getSFXCacheFetchingSchema(URI))
 	end,
 	convert = function(value : string)
-		local soundId = value
+		local URI = value
 
 		local success = pcall(function()
 			return util.stringToNumber(value)
 		end)
 		if success then
-			soundId = "rbxassetid://" .. value
+			URI = "rbxassetid://" .. value
 		end
 
-		SFXCache:Get(getSFXCacheFetchingSchema(soundId))
+		SFXCache:Get(getSFXCacheFetchingSchema(URI))
 
-		return soundId
+		return URI
 	end,
 	attributes = {
 		volume = {
