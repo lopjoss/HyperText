@@ -1910,138 +1910,122 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 						
 						for j, dataModule in ipairs(markupDataModules) do
 							if string.lower(dataModule.name) == string.lower(markupType) then
-								if typeEndPos < tagEndPos then
-									if dataModule.type == "paired" then
-										local deleteMarkup = markupValue
-											and markupValue == config.DELETE_MARKUP_VALUE_SYNTAX
-										
-										if (deleteMarkup and dataModule.unrequired) or not deleteMarkup then
-											local success : boolean
-											local convertedValue : any
+								if dataModule.type == "paired" then
+									local deleteMarkup = markupValue
+										and markupValue == config.DELETE_MARKUP_VALUE_SYNTAX
+									
+									if (deleteMarkup and dataModule.unrequired) or not deleteMarkup then
+										local success : boolean
+										local convertedValue : any
 
-											if deleteMarkup then
-												success = true
-												convertedValue = util.DELETE_SYNTAX
-											elseif markupValue then
-												success, convertedValue = pcall(dataModule.convert, markupValue)
-											end
-											
-											if success or not markupValue then
-												local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
-
-												if success or #attrsValues > 0 then
-													table.insert(markupHistory, 1, markupType)
-													
-													self._constructionScheduler:Append(function()
-														if self._constructionMarkups then
-															self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
-
-															if dataModule.onConstruction then
-																local markups = util.deepCopy(self._constructionMarkups)
-																
-																dataModule.onConstruction(
-																	self,
-																	markups
-																)
-															end
-
-															self:_CreateSpan(markupType)
-														end
-													end)
-												else
-													warn(
-														"Failed to parse tag \""
-															.. string.sub(t, i, tagEndPos) 
-															.. "\": no assigned value or attributes found"
-															.. "\n" .. renderTraceback
-													)
-												end
-											else
-												warn(
-													"Failed to parse tag \""
-														.. string.sub(t, i, tagEndPos) 
-														.. "\": " .. convertedValue
-														.. "\n" .. renderTraceback
-												)
-											end
-										elseif deleteMarkup then
-											warn(
-												"Failed to parse tag \""
-													.. string.sub(t, i, tagEndPos) 
-													.. "\": this markup cannot be deleted"
-													.. "\n" .. renderTraceback
-											)
+										if deleteMarkup then
+											success = true
+											convertedValue = util.DELETE_SYNTAX
+										elseif markupValue then
+											success, convertedValue = pcall(dataModule.convert, markupValue)
 										end
-									elseif dataModule.type == "selfClosing" then
-										if markupValue then
-											local success, convertedValue = pcall(
-												dataModule.convert,
-												markupValue
-											)
+										
+										if success or not markupValue then
+											local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
 
-											if success then
-												local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
+											if success or #attrsValues > 0 then
+												table.insert(markupHistory, 1, markupType)
 												
-												if not dataModule.appendToCurrentWord then
-													self._constructionScheduler:Append(function()
-														self:_Construct()
-													end)
-												end
-												
-												self._constructionScheduler:Append(
-													function()
-														if self._constructionMarkups then
-															local markups = util.deepCopy(self._constructionMarkups)
-
-															util.updateMarkups(markups, markupType, convertedValue, attrsValues)
-
-															if dataModule.onConstruction then
-																dataModule.onConstruction(
-																	self,
-																	markups
-																)
-															end
-															
-															if dataModule.appendToCurrentWord then
-																self:_AppendSelfClosingMarkupToCurrentWord(
-																	markupType,
-																	tagEndPos,
-																	markups
-																)
-															end
-														end
-													end,
-													dataModule.appendToCurrentWord
-														and PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID
-														or nil
-												)
 												self._constructionScheduler:Append(function()
-													self:_AppendSelfClosingMarkupToSpans(tagEndPos)
+													if self._constructionMarkups then
+														self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
+
+														if dataModule.onConstruction then
+															local markups = util.deepCopy(self._constructionMarkups)
+															
+															dataModule.onConstruction(
+																self,
+																markups
+															)
+														end
+
+														self:_CreateSpan(markupType)
+													end
 												end)
 											else
 												warn(
 													"Failed to parse tag \""
 														.. string.sub(t, i, tagEndPos) 
-														.. "\": " .. convertedValue
+														.. "\": no assigned value or attributes found"
 														.. "\n" .. renderTraceback
 												)
 											end
 										else
 											warn(
-												"Failed to parse tag \"" 
-													.. string.sub(t, i, tagEndPos)
-													.. "\": no assigned value found\n"
-													.. renderTraceback
+												"Failed to parse tag \""
+													.. string.sub(t, i, tagEndPos) 
+													.. "\": " .. convertedValue
+													.. "\n" .. renderTraceback
 											)
 										end
+									elseif deleteMarkup then
+										warn(
+											"Failed to parse tag \""
+												.. string.sub(t, i, tagEndPos) 
+												.. "\": this markup cannot be deleted"
+												.. "\n" .. renderTraceback
+										)
 									end
-								else
-									warn(
-										"Failed to parse tag \"" 
-											.. string.sub(t, i, tagEndPos)
-											.. "\": no assigned value found\n"
-											.. renderTraceback
-									)
+								elseif dataModule.type == "selfClosing" then
+									local success : boolean
+									local convertedValue : any
+
+									if markupValue then
+										success, convertedValue = pcall(dataModule.convert, markupValue)
+									end
+
+									if success or not markupValue then
+										local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
+										
+										if not dataModule.appendToCurrentWord then
+											self._constructionScheduler:Append(function()
+												self:_Construct()
+											end)
+										end
+										
+										self._constructionScheduler:Append(
+											function()
+												if self._constructionMarkups then
+													local markups = util.deepCopy(self._constructionMarkups)
+
+													util.updateMarkups(markups, markupType, convertedValue, attrsValues)
+
+													if dataModule.onConstruction then
+														dataModule.onConstruction(
+															self,
+															markups
+														)
+													end
+													
+													if dataModule.appendToCurrentWord then
+														self:_AppendSelfClosingMarkupToCurrentWord(
+															markupType,
+															tagEndPos,
+															markups
+														)
+													end
+												end
+											end,
+											dataModule.appendToCurrentWord
+												and PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID
+												or nil
+										)
+										self._constructionScheduler:Append(function()
+											self:_AppendSelfClosingMarkupToSpans(tagEndPos)
+										end)
+									else
+										warn(
+											"Failed to parse tag \""
+												.. string.sub(t, i, tagEndPos) 
+												.. "\": " .. convertedValue
+												.. "\n" .. renderTraceback
+										)
+									end
 								end
 								
 								break
