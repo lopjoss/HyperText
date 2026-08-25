@@ -16,13 +16,13 @@ local SFXCache = memoizer.new<<schema>>(
 	config.MAX_TYPEWRITER_SFX_CACHE_RECORDS
 )
 
-local function getSFXCacheFetchingSchema(soundId : string) : memoizer.fetchingSchema<schema>
+local function getSFXCacheFetchingSchema(soundURI : string) : memoizer.fetchingSchema<schema>
 	return {
-		[soundId] = function()
+		[soundURI] = function()
 			local fetchStatus : Enum.AssetFetchStatus?
 			local sound : Sound?
 			local success, result = pcall(function()
-				local snippet = tonumber(soundId:sub(string.len("rbxassetid://") + 1))
+				local snippet = tonumber(soundURI:sub(string.len("rbxassetid://") + 1))
 
 				if snippet then
 					return MarketplaceService:GetProductInfoAsync(snippet)
@@ -33,7 +33,7 @@ local function getSFXCacheFetchingSchema(soundId : string) : memoizer.fetchingSc
 
 			if success and result and result.AssetTypeId == 3 then
 				sound = Instance.new("Sound")
-				sound.SoundId = soundId
+				sound.SoundId = soundURI
 	
 				ContentProvider:PreloadAsync({sound}, function(_, status)
 					fetchStatus = status
@@ -47,7 +47,7 @@ local function getSFXCacheFetchingSchema(soundId : string) : memoizer.fetchingSc
 
 				local errmsg = not sound and result or fetchStatus and fetchStatus.Name
 
-				error(`Failed to load sound with asset URI "{soundId}": {errmsg}`, 0)
+				error(`Failed to load sound with asset URI "{soundURI}": {errmsg}`, 0)
 			end
 
 			return sound
@@ -80,7 +80,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 					or t >= obj._nextTypewriterSFXTime
 			)
 		then
-			local soundId = typeof(printerData.markups.soundId.value) == "string"
+			local soundURI = typeof(printerData.markups.soundId.value) == "string"
 				and printerData.markups.soundId.value
 				or "rbxassetid://" .. printerData.markups.soundId.value
 			local renderId = obj._renderId
@@ -89,7 +89,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 
 			task.spawn(function()
 				local success, sound = pcall(function()
-					if obj._currentTypewriterSFX and obj._currentTypewriterSFX.SoundId == soundId then
+					if obj._currentTypewriterSFX and obj._currentTypewriterSFX.SoundId == soundURI then
 						return obj._currentTypewriterSFX
 					else
 						if obj._currentTypewriterSFX then
@@ -97,7 +97,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 							obj._currentTypewriterSFX = nil
 						end
 
-						local sound = SFXCache:Get(getSFXCacheFetchingSchema(soundId)):Clone()
+						local sound = SFXCache:Get(getSFXCacheFetchingSchema(soundURI)):Clone()
 						sound.Parent = SoundService
 
 						return sound
@@ -120,7 +120,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 							printerData.markups.interval.value
 						)
 					else
-						warn(`Failed to fetch sound with asset URI "{soundId}": {sound}`)
+						warn(`Failed to fetch sound with asset URI "{soundURI}": {sound}`)
 					end
 
 					obj._fetchingTypewriterSFX = false
@@ -142,14 +142,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 		SFXCache:Get(getSFXCacheFetchingSchema(URI))
 	end,
 	convert = function(value : string)
-		local URI = value
-
-		local success = pcall(function()
-			return util.stringToNumber(value)
-		end)
-		if success then
-			URI = "rbxassetid://" .. value
-		end
+		local URI = util.stringToURI(value)
 
 		SFXCache:Get(getSFXCacheFetchingSchema(URI))
 

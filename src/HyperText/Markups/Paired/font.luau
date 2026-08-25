@@ -3,10 +3,10 @@
 local types = require("../../Types")
 local util = require("../../Util")
 
-local function validateFont(value : string) : string
+local function validateFont(URI : string) : string
 	local fetschingSchema = util.getTextboundsCacheFetschinSchema(
 		"a",
-		value,
+		URI,
 		1,
 		Enum.FontWeight.Regular,
 		Enum.FontStyle.Normal
@@ -15,9 +15,9 @@ local function validateFont(value : string) : string
 	local textBounds = util.textBoundsCache:Get(fetschingSchema)
 	
 	if textBounds.Magnitude > 0 then
-		return value
+		return URI
 	else
-		error("\"" .. value .. "\" is not a valid font", 0)
+		error("\"" .. URI .. "\" is not a valid font", 0)
 	end
 end
 
@@ -46,25 +46,20 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 			)
 	end,
 	validateDefaultValue = function(value : number | string)
-		local fontId : string
+		local URI : string
 
 		if type(value) == "number" then
-			fontId = "rbxassetid://" .. tostring(value)
+			URI = "rbxassetid://" .. tostring(value)
 		else
-			fontId = value
+			URI = value
 		end
 
-		validateFont(fontId)
+		validateFont(URI)
 	end,
 	convert = function(value : string)
-		local success = pcall(function()
-			return util.stringToNumber(value)
-		end)
-		if success then
-			value = "rbxassetid://" .. tostring(value)
-		end
+		local URI = util.stringToURI(value)
 		
-		return validateFont(value)
+		return validateFont(URI)
 	end,
 	attributes = {},
 	valueAttributes = {},
