@@ -9,7 +9,7 @@ local flipbookEffect = require("./FlipbookEffect")
 
 return function(
 	obj : types.hyperTextClassObject,
-	id : number,
+	id : number | string,
 	printerData : types.printerDataRowEntry,
 	markups : types.markups,
 	attributes : types.emitImgAttrs & types.flipbookAttrs,
@@ -58,10 +58,14 @@ return function(
 				last = c
 
 				if math.random() * 100 <= attributes.chance then
+					local imageURI = typeof(id) == "string"
+						and id
+						or "rbxassetid://" .. id
+
 					local img = Instance.new("ImageLabel", container)
 					img.ImageColor3 = attributes.color
 					img.AnchorPoint = Vector2.new(.5, .5)
-					img.Image = "rbxassetid://" .. id
+					img.Image = imageURI 
 					img.BackgroundTransparency = 1
 					img.ImageTransparency = util.getRandomFromRange(attributes.startTrans)
 					img.Position = UDim2.fromScale(.5, .5) + UDim2.fromScale(

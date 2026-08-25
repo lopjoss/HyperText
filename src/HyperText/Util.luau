@@ -546,6 +546,17 @@ util.getRandomFromRange = function(range : NumberRange) : number
 	return (range.Max - range.Min) * math.random() + range.Min
 end
 
+util.stringToURI = function(str : string) : string
+	local success = pcall(function()
+		return util.stringToNumber(str)
+	end)
+	if success then
+		str = "rbxassetid://" .. tostring(str)
+	end
+	
+	return str
+end
+
 util.stringToNumber = function(str : string, min : number?, max : number?) : number
 	local number : number?
 	

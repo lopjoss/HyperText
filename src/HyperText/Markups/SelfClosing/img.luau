@@ -58,8 +58,12 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
+		local imageURI = typeof(markups.img.value) == "string"
+			and markups.img.value
+			or "rbxassetid://" .. markups.img.value
+
 		if flipbookEffect.shouldApplyFlipbookEffect(markups.img.attributes) then
-			flipbookEffect.cacheImageSize("rbxassetid://" .. markups.img.value)
+			flipbookEffect.cacheImageSize(imageURI)
 		end
 	end,
 	onPrint_ = function(
@@ -69,12 +73,15 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 		row : Frame,
 		updater : {[string] : (dt : number) -> ()}
 	)
+		local imageURI = typeof(markups.img.value) == "string"
+			and markups.img.value
+			or "rbxassetid://" .. markups.img.value
 		local entry = obj._constructionData.rowEntries[index]
 
 		local image = Instance.new("ImageLabel", row)
-		image.Name = "Image_" .. markups.img.value
+		image.Name = "Image_" .. imageURI
 		image.BackgroundTransparency = 1
-		image.Image = "rbxassetid://" .. markups.img.value
+		image.Image = imageURI
 		image.ImageTransparency = markups.img.attributes.trans or markups.trans.value
 		image.ImageColor3 = markups.img.attributes.color
 		image.ZIndex = markups.ZIndex.value
@@ -150,7 +157,7 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 			end
 		end
 	end,
-	convert = util.stringToNumber,
+	convert = util.stringToURI,
 	attributes = appendFlipbookAttrsConverters(
 		attrsConverters
 	),

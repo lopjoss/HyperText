@@ -19,6 +19,8 @@
 		the parser now warns if it finds an opening tag with no assigned value or attributes, which it now won't process
 		the module now errors if it finds a markup or attribute missing from the default markups or if you assign an invalid value to any markup or attribute, the latter also applies when you update an object's default markups, but it'll warn instead
 		image emitting markups have now the possiblity to be stacked, meaning nested tag pairs will all be applied
+		self-closing markups tags do not necessarily need an assigned value anymore, if no value is assigned it'll use its default value
+		all image markup now support images from URI's
 
 ]]
 

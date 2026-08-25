@@ -40,13 +40,13 @@ module.shouldApplyFlipbookEffect = function(attrs : types.flipbookAttrs) : boole
 	return false
 end
 
-module.cacheImageSize = function(imageId : string)
+module.cacheImageSize = function(imageURI : string)
 	local success, errmsg = pcall(function()
-		imageSizeCache:Get(getImageSizeCacheFetschingSchema(imageId))
+		imageSizeCache:Get(getImageSizeCacheFetschingSchema(imageURI))
 	end)
 
 	if not success then
-		warn(`Failed to cache image size for asset URI "{imageId}": {errmsg}`)
+		warn(`Failed to cache image size for asset URI "{imageURI}": {errmsg}`)
 	end
 end
 

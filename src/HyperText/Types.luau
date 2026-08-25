@@ -933,7 +933,7 @@ export type markups = {
 		valueAttributes : {},
 	},
 	img : {
-		value : number,
+		value : number | string,
 		attributes : imgAttrs & flipbookAttrs,
 		valueAttributes : {},
 	},
@@ -1078,7 +1078,7 @@ export type markups = {
 		valueAttributes : {},
 	},
 	emitImg : stack<{
-		value : number,
+		value : number | string,
 		attributes : emitImgAttrs & flipbookAttrs,
 		valueAttributes : {},
 	}>,

@@ -9,7 +9,11 @@ local flipbookEffect = require("../Helpers/FlipbookEffect")
 local function cacheImageSize(markups : types.markups)
 	for _, markups in pairs(markups.emitImg.stack) do
 		if markups and flipbookEffect.shouldApplyFlipbookEffect(markups.attributes) then
-			flipbookEffect.cacheImageSize("rbxassetid://" .. markups.value)
+			local imageURI = typeof(markups.value) == "string"
+				and markups.value
+				or "rbxassetid://" .. markups.value
+
+			flipbookEffect.cacheImageSize(imageURI)
 		end
 	end
 end
@@ -48,7 +52,7 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 			end
 		end
 	end,
-	convert = util.stringToNumber,
+	convert = util.stringToURI,
 	attributes = emitImgAttrsConverters,
 	valueAttributes = {},
 	stackable = true,

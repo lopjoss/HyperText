@@ -256,11 +256,11 @@ Cycles the rendered content's color through the colors of a rainbow, with each c
 <details>
 <summary><code>emitImg</code></summary>
 
-Emits an image with the given ID as a particle effect from the rendered content. This markup is stackable and inherits the flipbook attributes from the `img` markup.
+Emits an image with the given ID or URI as a particle effect from the rendered content. This markup is stackable and inherits the flipbook attributes from the `img` markup.
 
 <table>
-<tr><th>Luau value</th><td><code>number</code></td></tr>
-<tr><th>ASCII value</th><td><code>asset ID</code></td></tr>
+<tr><th>Luau value</th><td><code>number | string</code></td></tr>
+<tr><th>ASCII value</th><td><code>asset ID | asset URI</code></td></tr>
 </table>
 
 #### Attributes
@@ -501,11 +501,11 @@ Applies a decode effect to the rendered text. Each character switches between ra
 <details>
 <summary><code>img</code></summary>
 
-Adds an image with the given ID.
+Adds an image with the given ID or URI.
 
 <table>
-<tr><th>Luau value</th><td><code>number</code></td></tr>
-<tr><th>ASCII value</th><td><code>asset ID</code></td></tr>
+<tr><th>Luau value</th><td><code>number | string</code></td></tr>
+<tr><th>ASCII value</th><td><code>asset ID | asset URI</code></td></tr>
 </table>
 
 #### Attributes
