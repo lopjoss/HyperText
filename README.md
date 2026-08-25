@@ -455,7 +455,7 @@ Applies a color gradient to the rendered content.
 
 | Attribute | Luau value | ASCII value | Description |
 | --- | --- | --- | --- |
-| `colors` | `{Color3}` | `r,g,b;r,g,b;...` | The colors of the gradient, supporting up to 18 colors in one gradient. |
+| `colors` | `{Color3}` | `r,g,b;r,g,b;...` | The colors of the gradient. Each gradient requires between 1 and 18 colors. |
 | `rot` | `number` | `number` | The rotation of the gradient in degrees. |
 | `individual` | `boolean` | `true \| false` | Whether each character gets its own gradient instead of sharing one across the marked text. |
 | `moveDir` | `"left" \| "right"` | `left \| right` | The direction in which the gradient colors move. |
@@ -641,7 +641,7 @@ Creates and returns a new HyperText object.
 <details>
 <summary><code>.newMarkups() : markups</code></summary>
 
-Returns a full markups shaped dict with values/attributes emptied to nil, except for a stackable markup's stack, which retains it default stack entries. Used for updating an object's default markups. To delete an optional default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
+Returns a full markups shaped dict with values/attributes emptied to nil, except for a stackable markup's stack, which retains its default stack entries. Used for updating an object's default markups. To delete an optional default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
 
 ```luau
 local markups = HyperText.newMarkups()
@@ -672,7 +672,7 @@ Returns a new markup entry which is inserted into a stackable markup at the give
 <details>
 <summary><code>:UpdateDefaultMarkups(markups)</code></summary>
 
-Merges the given markups dictionary into the object's default markups.
+Merges the given markups dictionary into the object's default markups. This method may yield.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -697,7 +697,7 @@ Renders the given text inside the object's container and applies the object's de
 <details>
 <summary><code>:CompleteRender()</code></summary>
 
-Skips all remaining render intervals immediately. If any uncached value is being fetched, this method may return before the render finishes.
+Skips all remaining render intervals immediately. It does not skip or wait for yielding parsing or construction work, including resource fetching and custom callbacks, so it may return before the render finishes.
 
 </details>
 
@@ -910,10 +910,18 @@ local module : types.dataModule<
 	convert = function(value : string) : "glow" | "blink" -- Converts the raw tag value to its schema type.
 		
 	end,
+	validateDefaultValue = function(value : "glow" | "blink") -- Validates or caches an already-converted default value.
+
+	end,
 	unrequired = false, -- If set to true it allows the markup's optional value to be removed with "/" (this is only applicable to non-stackable markups).
 
 	attributes = { -- Converters for attributes available to every pulse value.
 		speed = {
+			validateDefaultValue = function(value : number) -- Applies the same restrictions to a default speed.
+				if value < 0 then
+					error("Value must be more than or equal to 0", 0)
+				end
+			end,
 			convert = function(value : string) : number
 				return util.stringToNumber(value, 0)
 			end,
@@ -927,6 +935,11 @@ local module : types.dataModule<
 	valueAttributes = { -- Converters for attributes available only to their corresponding pulse value.
 		glow = {
 			intensity = {
+				validateDefaultValue = function(value : number) -- Applies the same restrictions to a default intensity.
+					if value < 0 then
+						error("Value must be more than or equal to 0", 0)
+					end
+				end,
 				convert = function(value : string) : number
 					return util.stringToNumber(value, 0)
 				end,
@@ -941,6 +954,10 @@ local module : types.dataModule<
 			},
 		},
 	},
+
+	onDefaultMarkupsChanged = function(markups : types.markups) -- Runs after global default validation and every default-markup update.
+
+	end,
 
 	onConstruction = function( -- Runs after parsing the tag but before printing starts.
 		obj : types.hyperTextClassObject, -- HyperText object constructing the render.
@@ -1005,9 +1022,17 @@ local module : types.dataModule<
 	convert = function(value : string) : "info" | "warning" -- Converts the raw tag value to its schema type.
 		
 	end,
+	validateDefaultValue = function(value : "info" | "warning") -- Validates or caches an already-converted default value.
+
+	end,
 
 	attributes = { -- Converters for attributes available to every badge value.
 		size = {
+			validateDefaultValue = function(value : number) -- Applies the same restrictions to a default size.
+				if value < 0 then
+					error("Value must be more than or equal to 0", 0)
+				end
+			end,
 			convert = function(value : string) : number
 				return util.stringToNumber(value, 0)
 			end,
@@ -1033,6 +1058,10 @@ local module : types.dataModule<
 			},
 		},
 	},
+
+	onDefaultMarkupsChanged = function(markups : types.markups) -- Runs after global default validation and every default-markup update.
+
+	end,
 
 	onConstruction = function( -- Runs after parsing the markup instance but before printing starts.
 		obj : types.hyperTextClassObject, -- HyperText object constructing the render.
@@ -1071,6 +1100,36 @@ Place your data module directly inside `Markups/Paired` or `Markups/SelfClosing`
 ### Data module behavior
 
 <details>
+<summary><code>Data module callbacks</code></summary>
+
+| Callback | Purpose |
+| --- | --- |
+| `convert` | Converts a raw ASCII tag value to the type declared by the markup schema. |
+| `validateDefaultValue` | Validates or caches a non-`nil`, already-converted default value. It returns nothing and must error to reject the value; it is not automatically called for values returned by `convert`. |
+| `onDefaultMarkupsChanged` | Receives the complete defaults after global default validation and after every default-markup update. The table is not copied and should be treated as read-only. |
+| `onConstruction` | Prepares the complete state of one parsed tag before printing. |
+| `onPrint` | Applies a paired markup to each relevant printed entry. |
+| `validate` | Determines whether a paired markup configured with `applyOnClear` should run while clearing. |
+| `getClearingDuration` | Returns how long a paired clearing effect needs. |
+| `getSize` | Returns the layout size of an inline self-closing markup. |
+| `onPrint_` | Prints or performs one inline self-closing markup occurrence. |
+
+</details>
+
+<details>
+<summary><code>Choosing the correct callback</code></summary>
+
+| Required work | Callback |
+| --- | --- |
+| Convert a raw ASCII value or attribute | `convert` |
+| Validate or cache one programmatic default field | `validateDefaultValue` |
+| Prepare defaults using several fields or active stack entries | `onDefaultMarkupsChanged` |
+| Prepare the complete state of one parsed tag occurrence | `onConstruction` |
+| Apply already-prepared state during printing | `onPrint` or `onPrint_` |
+
+</details>
+
+<details>
 <summary><code>onConstruction</code></summary>
 
 `onConstruction` is optional for paired markups, structural self-closing markups, and inline self-closing markups.
@@ -1106,9 +1165,12 @@ Both modes can use `onConstruction`.
 ### Useful references
 
 - `color` for a minimal paired markup.
+- `size` for a simple main-value `validateDefaultValue` callback.
+- `GradientAttrsConverters` for attribute-level default validation.
 - `anim` for attributes, value-specific attributes, updater work, and image support.
 - `clearAnim` for clearing hooks.
-- `emitImg` for a stackable paired markup and construction-time resource fetching.
+- `soundId` for sharing resource-loading logic between `convert` and `validateDefaultValue`.
+- `emitImg` for a stackable paired markup using `onDefaultMarkupsChanged` and per-tag `onConstruction` caching.
 - `br` for structural self-closing construction.
 - `wait` for a zero-size inline self-closing action.
 - `img` for a rendered inline self-closing object with `onConstruction`, layout, and printing hooks.

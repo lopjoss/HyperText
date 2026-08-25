@@ -111,7 +111,11 @@ type function createAttrConverters(attrs : type)
 						{head = {types.string}, tail = types.any},
 						{head = {required(valueType)}}
 					),
-
+					[types.singleton("validateDefaultValue")] = types.optional(
+						types.newfunction(
+							{head = {required(valueType)}}
+						)
+					),
 					[types.singleton("unrequired")] = if isOptional(valueType)
 						then types.singleton(true)
 						else types.optional(types.singleton(false)),
@@ -343,6 +347,16 @@ type function createDataModule(
 			{head = {types.string}, tail = types.any},
 			{head = {required(markupValue)}}
 		),
+		[types.singleton("validateDefaultValue")] = types.optional(
+			types.newfunction(
+				{head = {required(markupValue)}}
+			)
+		),
+		[types.singleton("onDefaultMarkupsChanged")] = types.optional(
+			types.newfunction(
+				{head = {markupsType}}
+			)
+		),
 		[types.singleton("appendToCurrentWord")] = appendToCurrentWord,
 		[types.singleton("applyToImages")] = applyToImagesType,
 		[types.singleton("applyOnClear")] = applyOnClearType,
@@ -402,22 +416,23 @@ type function createDataModule(
 	return types.newtable(type_)
 end
 export type dataModuleType = "paired" | "selfClosing"
-export type dataModuleMarkupAttrs = {[string] : {
+type dataModuleLooseAttrBase = {
 	convert : (value : string) -> any,
+	validateDefaultValue : ((value : any) -> ())?,
 	unrequired : boolean?,
-}}
-export type dataModuleMarkupValueAttrs = {[string] : {[string] : {
-	convert : (value : string) -> any,
-	unrequired : boolean?,
-}}}
+}
+export type dataModuleLooseAttrs = {[string] : dataModuleLooseAttrBase}
+export type dataModuleLooseValueAttrs = {[string] : {[string] : dataModuleLooseAttrBase}}
 export type dataModuleLoose = {
 	convert : (value : string) -> any,
 	name : string,
 	type : dataModuleType,
 	unrequired : boolean?,
-	attributes : dataModuleMarkupAttrs,
-	valueAttributes : dataModuleMarkupValueAttrs,
-	onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>
+	attributes : dataModuleLooseAttrs,
+	valueAttributes : dataModuleLooseValueAttrs,
+	onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>,
+	validateDefaultValue : ((value : any) -> ())?,
+	onDefaultMarkupsChanged : ((markups : markups) -> ())?,
 } & (
 	{
 		type : "paired",
@@ -646,7 +661,7 @@ export type hyperTextClassContent = {
 export type hyperTextClassMethods = {
 	UpdateDefaultMarkups : typeof(
 		--[[
-			Merges the given markups dictionary into the object's default markups.
+			Merges the given markups dictionary into the object's default markups. This method may yield.
 
 			markups: markups
 			The dict, obtained from calling <code>.newMarkups().</code>
@@ -682,7 +697,7 @@ export type hyperTextClassMethods = {
 	),
 	CompleteRender : typeof(
 		--[[
-			Skips all remaining render intervals immediately. If any uncached value is being fetched, this method may return before the render finishes.
+			Skips all remaining render intervals immediately. It does not skip or wait for yielding parsing or construction work, including resource fetching and custom callbacks, so it may return before the render finishes.
 		]]
 		function(
 			self : hyperTextClassObject
@@ -801,8 +816,8 @@ export type hyperTextClassMethods = {
 		markupValueEndPos : number,
 		tagEndPos : number,
 		markupValue : string?,
-		markupAttrs : dataModuleMarkupAttrs,
-		markupValueAttrs : dataModuleMarkupValueAttrs
+		markupAttrs : dataModuleLooseAttrs,
+		markupValueAttrs : dataModuleLooseValueAttrs
 	) -> {{
 		attr : string,
 		schemaAttr : string,

@@ -177,36 +177,73 @@ util.mergeMarkups = function(
 				else
 					warn(
 						debug.traceback(
-							"Failed to delete the \""
-								.. markupName .. "\" markup: This markup cannot be deleted\nTraceback:"
+							"Failed to delete markup \""
+								.. markupName .. "\": This markup cannot be deleted\nTraceback:"
 						)
 					)
 				end
 			else
-				baseMarkup.value = markup.value
+				local success, errmsg = true, nil
+
+				if dataModule.validateDefaultValue then
+					success, errmsg = pcall(
+						dataModule.validateDefaultValue,
+						markup.value
+					)
+				end
+				
+				if success then
+					baseMarkup.value = markup.value
+				else
+					warn(
+						debug.traceback(
+							"Failed to update markup \""
+								.. markupName .. `\": {errmsg}\nTraceback:`
+						)
+					)
+				end
 			end
 		end
 
 		for attr, value in pairs(markup.attributes) do
 			if value ~= nil then
-				if value == util.DELETE_SYNTAX then
-					for dataModuleAttr, data in pairs(dataModule.attributes) do
-						if dataModuleAttr == attr then
+				for dataModuleAttr, data in pairs(dataModule.attributes) do
+					if dataModuleAttr == attr then
+						if value == util.DELETE_SYNTAX then
 							if data.unrequired then
 								baseMarkup.attributes[attr] = nil
 							else
 								warn(
 									debug.traceback(
-										"Failed to delete the \""
-											.. attr .. "\" attribute of the \""
-											.. markupName .. "\" markup: This attribute cannot be deleted\nTraceback:"
+										"Failed to delete attribute \""
+											.. attr .. "\" of markup \""
+											.. markupName .. "\": This attribute cannot be deleted\nTraceback:"
+									)
+								)
+							end
+						else
+							local success, errmsg = true, nil
+
+							if data.validateDefaultValue then
+								success, errmsg = pcall(
+									data.validateDefaultValue,
+									value
+								)
+							end
+							
+							if success then
+								baseMarkup.attributes[attr] = value
+							else
+								warn(
+									debug.traceback(
+										"Failed to update attribute \""
+											.. attr .. "\" of markup \""
+											.. markupName .. `\": {errmsg}\nTraceback:`
 									)
 								)
 							end
 						end
 					end
-				else
-					baseMarkup.attributes[attr] = value
 				end
 			end
 		end
@@ -214,20 +251,42 @@ util.mergeMarkups = function(
 		for value, attrs in pairs(markup.valueAttributes) do
 			for attr, attrValue in pairs(attrs) do
 				if attrValue ~= nil then
-					if attrValue == util.DELETE_SYNTAX then
-						for dataModuleValue, dataModuleAttrs in pairs(dataModule.valueAttributes) do
-							if dataModuleValue == value then
-								for dataModuleAttr, data in pairs(dataModuleAttrs) do
-									if dataModuleAttr == attr then
+					for dataModuleValue, dataModuleAttrs in pairs(dataModule.valueAttributes) do
+						if dataModuleValue == value then
+							for dataModuleAttr, data in pairs(dataModuleAttrs) do
+								if dataModuleAttr == attr then
+									if attrValue == util.DELETE_SYNTAX then
 										if data.unrequired then
 											baseMarkup.valueAttributes[value][attr] = nil
 										else
 											warn(
 												debug.traceback(
-													"Failed to delete the \""
-														.. attr .. "\" attribute of the \""
-														.. value .. "\" value of the \""
-														.. markupName .. "\" markup: This attribute cannot be deleted\nTraceback:"
+													"Failed to delete attribute \""
+														.. attr .. "\" of value \""
+														.. value .. "\" of markup \""
+														.. markupName .. "\": This attribute cannot be deleted\nTraceback:"
+												)
+											)
+										end
+									else
+										local success, errmsg = true, nil
+
+										if data.validateDefaultValue then
+											success, errmsg = pcall(
+												data.validateDefaultValue,
+												attrValue
+											)
+										end
+										
+										if success then
+											baseMarkup.valueAttributes[value][attr] = attrValue
+										else
+											warn(
+												debug.traceback(
+													"Failed to update attribute \""
+													.. attr .. "\" of value \""
+													.. value .. "\" of markup \""
+													.. markupName .. `\": {errmsg}\nTraceback:`
 												)
 											)
 										end
@@ -235,8 +294,6 @@ util.mergeMarkups = function(
 								end
 							end
 						end
-					else
-						baseMarkup.valueAttributes[value][attr] = attrValue
 					end
 				end
 			end
@@ -385,7 +442,7 @@ util.updateMarkups = function(
 	return previousValue, previousAttrsValues, not revertStack
 end
 
-type schema = {
+type textBoundsCacheSchema = {
 	[string] : {
 		[number | string] : {
 			[number] : {
@@ -397,29 +454,31 @@ type schema = {
 	}
 }
 
-local textBoundsCache = memoizer.new<<schema>>(
+local textBoundsCache = memoizer.new<<textBoundsCacheSchema>>(
 	5,
 	config.MAX_TEXTBOUNDS_CACHE_RECORDS
 )
+util.textBoundsCache = textBoundsCache
 
-util.fetchTextBounds = function(
+util.getTextboundsCacheFetschinSchema = function(
 	str : string,
-	markups : types.markups,
-	proportionalSize : number?
-) : Vector2
-	local styleEnum = markups.italic.value and Enum.FontStyle.Italic or Enum.FontStyle.Normal
-	local fetchSchema : memoizer.fetchingSchema<schema> = {
+	font : number | string,
+	size : number,
+	weight : Enum.FontWeight,
+	style : Enum.FontStyle
+) : memoizer.fetchingSchema<textBoundsCacheSchema>
+	return {
 		[str] = {
-			[markups.font.value] = {
-				[proportionalSize or markups.size.value] = {
-					[markups.weight.value] = {
-						[styleEnum] = function()
+			[font] = {
+				[size] = {
+					[weight] = {
+						[style] = function()
 							local params = Instance.new("GetTextBoundsParams")
 							params.Text = str
-							params.Font = typeof(markups.font.value) == "string"
-								and Font.new(markups.font.value, markups.weight.value, styleEnum)
-								or Font.fromId(markups.font.value :: number, markups.weight.value, styleEnum)
-							params.Size = proportionalSize or markups.size.value
+							params.Font = typeof(font) == "string"
+								and Font.new(font, weight, style)
+								or Font.fromId(font :: number, weight, style)
+							params.Size = size
 
 							return TextService:GetTextBoundsAsync(params)
 						end
@@ -428,8 +487,22 @@ util.fetchTextBounds = function(
 			}
 		}
 	}
+end
+
+util.fetchTextBounds = function(
+	str : string,
+	markups : types.markups,
+	proportionalSize : number?
+) : Vector2
+	local fetschingSchema = util.getTextboundsCacheFetschinSchema(
+		str,
+		markups.font.value,
+		proportionalSize or markups.size.value,
+		markups.weight.value,
+		markups.italic.value and Enum.FontStyle.Italic or Enum.FontStyle.Normal
+	)
 	
-	return textBoundsCache:Get(fetchSchema)
+	return textBoundsCache:Get(fetschingSchema)
 end
 
 util.removeEntryFromTransformUpdater = function(

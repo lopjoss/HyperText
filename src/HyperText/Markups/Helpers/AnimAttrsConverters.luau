@@ -5,6 +5,11 @@ local types = require("../../Types")
 
 local converters : types.animAttrsConverters = {
 	dur = {
+		validateDefaultValue = function(value : number)
+			if value < 0 then
+				error("Value must be more than or equal to 0", 0)
+			end
+		end,
 		convert = function(value : string)
 			return util.stringToNumber(value, 0)
 		end,

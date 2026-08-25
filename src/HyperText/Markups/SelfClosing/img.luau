@@ -11,11 +11,21 @@ local attrsConverters : types.imgAttrsConverters = {
 		convert = util.stringToBoolean,
 	},
 	height = {
+		validateDefaultValue = function(value : number)
+			if value < 0 then
+				error("Value must be more than or equal to 0", 0)
+			end
+		end,
 		convert = function(value : string)
 			return util.stringToNumber(value, 0)
 		end,
 	},
 	aspectRatio = {
+		validateDefaultValue = function(value : number)
+			if value < 0 then
+				error("Value must be more than or equal to 0", 0)
+			end
+		end,
 		convert = function(value : string)
 			return util.stringToNumber(value, 0)
 		end,
@@ -48,7 +58,7 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		if markups.img.attributes.flipbookLayout then
+		if flipbookEffect.shouldApplyFlipbookEffect(markups.img.attributes) then
 			flipbookEffect.cacheImageSize("rbxassetid://" .. markups.img.value)
 		end
 	end,

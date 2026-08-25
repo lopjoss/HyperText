@@ -7,6 +7,14 @@ local emitImage = require("../Helpers/EmitImage")
 local emitImgAttrsConverters = require("../Helpers/EmitImgAttrsConverters")
 local flipbookEffect = require("../Helpers/FlipbookEffect")
 
+local function cacheImageSize(markups : types.markups)
+	for _, markups in pairs(markups.fog.stack) do
+		if markups and markups.value and flipbookEffect.shouldApplyFlipbookEffect(markups.attributes) then
+			flipbookEffect.cacheImageSize("rbxassetid://" .. config.FOG_IMG_ID)
+		end
+	end
+end
+
 local name : "fog" = "fog"
 local type_ : "paired" = "paired"
 local applyToImages : true = true
@@ -19,19 +27,9 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		local i = 0
-		for j, _ in pairs(markups.fog.stack) do
-			if j > i then
-				i = j
-			end
-		end
-
-		local lastEntry = markups.fog.stack[i]
-		
-		if lastEntry and lastEntry.attributes.flipbookLayout then
-			flipbookEffect.cacheImageSize("rbxassetid://" .. config.FOG_IMG_ID)
-		end
+		cacheImageSize(markups)
 	end,
+	onDefaultMarkupsChanged = cacheImageSize,
 	onPrint = function(
 		obj : types.hyperTextClassObject,
 		printerData : types.printerDataRowEntry,

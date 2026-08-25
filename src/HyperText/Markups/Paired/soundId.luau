@@ -130,6 +130,17 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 			end)
 		end
 	end,
+	validateDefaultValue = function(value : number | string)
+		local soundId : string
+
+		if type(value) == "number" then
+			soundId = "rbxassetid://" .. tostring(value)
+		else
+			soundId = value
+		end
+
+		SFXCache:Get(getSFXCacheFetchingSchema(soundId))
+	end,
 	convert = function(value : string)
 		local soundId = value
 

@@ -29,6 +29,17 @@ local function getImageSizeCacheFetschingSchema(imageId : string) : memoizer.fet
 	}
 end
 
+module.shouldApplyFlipbookEffect = function(attrs : types.flipbookAttrs) : boolean
+	if attrs.flipbookLayout then
+		local columns = math.floor(attrs.flipbookLayout.X)
+		local rows = math.floor(attrs.flipbookLayout.Y)
+		
+		return columns >= 1 and rows >= 1
+	end
+
+	return false
+end
+
 module.cacheImageSize = function(imageId : string)
 	imageSizeCache:Get(getImageSizeCacheFetschingSchema(imageId))
 end

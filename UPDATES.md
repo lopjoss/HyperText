@@ -4,8 +4,7 @@
 	- bidirectional support
 	- applyToWhitespace field in markup datamodule
 	v4.2:
-	- note in readme that paired onprints always fire unlike self closing onprints
-	- validate & cache applicable values when updating default markups
+	- make a self-closing markup value optional and have its default value as a fallback
 	- add an insertionIndex to stacks instead of looping all the time
 	- add bgImg markup
 	- make img markups accept string asset ids
@@ -17,9 +16,11 @@
 		added caching limits in configs
 
 	CHANGES:
-		typewriter sounds are now preloaded during parsing, preventing delays when the soundId markup changes during rendering.
-		editable image sizes for flipbook effects are now fetched during construction, so flipbook images appear immediately instead of popping in after their size has been fetched.
+		typewriter sounds are now preloaded during parsing, preventing delays when the soundId markup changes during rendering
+		image sizes for flipbook effects are now fetched during construction, so flipbook images appear immediately instead of popping in after their size has been fetched
 		the parser now warns if it finds an opening tag with no assigned value or attributes, which it now won't process
+		the module now errors if it finds a markup or attribute missing from the default markups or if you assign an invalid value to any markup or attribute, the latter also applies when you update an object's default markups, but it'll warn instead
+		
 
 	ADDITIONS:
 		image emitting markups have now the possiblity to be stacked, meaning nested tag pairs will all be applied

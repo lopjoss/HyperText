@@ -2,7 +2,24 @@
 
 local types = require("../../Types")
 local util = require("../../Util")
-local config = require("../../Config")
+
+local function validateFont(value : string) : string
+	local fetschingSchema = util.getTextboundsCacheFetschinSchema(
+		"a",
+		value,
+		1,
+		Enum.FontWeight.Regular,
+		Enum.FontStyle.Normal
+	)
+
+	local textBounds = util.textBoundsCache:Get(fetschingSchema)
+	
+	if textBounds.Magnitude > 0 then
+		return value
+	else
+		error("\"" .. value .. "\" is not a valid font", 0)
+	end
+end
 
 local name : "font" = "font"
 local type_ : "paired" = "paired"
@@ -28,6 +45,17 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 				printerData.markups.italic.value and Enum.FontStyle.Italic or Enum.FontStyle.Normal
 			)
 	end,
+	validateDefaultValue = function(value : number | string)
+		local fontId : string
+
+		if type(value) == "number" then
+			fontId = "rbxassetid://" .. tostring(value)
+		else
+			fontId = value
+		end
+
+		validateFont(fontId)
+	end,
 	convert = function(value : string)
 		local success = pcall(function()
 			return util.stringToNumber(value)
@@ -36,19 +64,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 			value = "rbxassetid://" .. tostring(value)
 		end
 		
-		local default = util.deepCopy(config.DEFAULT_MARKUPS)
-		local markups = util.getEmptyMarkups()
-		markups.font.value = value
-		
-		util.mergeMarkups(default, markups)
-		
-		local textBounds = util.fetchTextBounds(value, default)
-		
-		if textBounds.Magnitude > 0 then
-			return value
-		else
-			error("\"" .. value .. "\" is not a valid font", 0)
-		end
+		return validateFont(value)
 	end,
 	attributes = {},
 	valueAttributes = {},

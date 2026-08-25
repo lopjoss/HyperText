@@ -441,7 +441,7 @@ local DEFAULT_MARKUPS : types.markups = {
 		}
 	},
 	br = {
-		value = 0,
+		value = 1,
 		attributes = {},
 		valueAttributes = {},
 	},

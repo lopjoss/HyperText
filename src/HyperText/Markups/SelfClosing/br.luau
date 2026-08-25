@@ -13,7 +13,9 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		for i = 1, markups.br.value do
+		local amount = math.floor(markups.br.value)
+		
+		for i = 1, amount do
 			obj:_CreateRow(markups)
 		end
 		
@@ -21,7 +23,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 			local created = 0
 
 			for i, row in ipairs(obj._constructionData.rows) do
-				if not row.instance and created < markups.br.value then
+				if not row.instance and created < amount then
 					local rowInstance = obj:_CreateRowInstance(row.height, i)
 
 					row.instance = rowInstance
@@ -30,6 +32,11 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 				end
 			end
 		end)
+	end,
+	validateDefaultValue = function(value : number)
+		if value < 1 then
+			error("Value must be more than or equal to 1", 0)
+		end
 	end,
 	convert = function(value : string)
 		return math.floor(util.stringToNumber(value, 1))

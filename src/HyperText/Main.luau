@@ -23,6 +23,7 @@ local signal = require("./Signal")
 
 local updater : {[string] : (dt : number) -> ()} = {}
 local markupDataModules = util.getAllMarkupDataModules()
+local defaultMarkupsIndexable = config.DEFAULT_MARKUPS :: types.markupsIndexable
 
 local PARSER_APPEND_STRING_SCHEDULER_ID = 1
 local PARSER_APPEND_WHITESPACE_SCHEDULER_ID = 2
@@ -41,6 +42,102 @@ local function yieldWhile(callback : (elapsed : number) -> boolean)
 
 	while callback(elapsed) do
 		elapsed += RunService.Heartbeat:Wait()
+	end
+end
+
+for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+	local isStackable = dataModule.type == "paired" and dataModule.stackable
+	local markup = not isStackable 
+		and defaultMarkupsIndexable[dataModule.name] :: types.markupIndexable
+	local stackableMarkup = isStackable 
+		and defaultMarkupsIndexable[dataModule.name] :: types.stack<types.markupIndexable>
+
+	if markup or stackableMarkup then
+		local function process(markup : types.markupIndexable)
+			if markup.value ~= nil then
+				if dataModule.validateDefaultValue then
+					dataModule.validateDefaultValue(markup.value)
+				end
+			elseif not dataModule.unrequired then
+				error(`Markup {dataModule.name} has no assigned value in the default markup list`)
+			end
+
+			for dataModuleAttr, data in pairs(dataModule.attributes) do
+				local valid = false
+
+				for attr, value in pairs(markup.attributes) do
+					if attr == dataModuleAttr then
+						valid = true
+
+						if data.validateDefaultValue then
+							data.validateDefaultValue(value)
+						end
+
+						break
+					end
+				end
+
+				if not valid and not data.unrequired then
+					error(`Attribute "{dataModuleAttr}" of markup "{dataModule.name}" was not found in the default markups list`)
+				end
+			end
+
+			for dataModuleValue, dataModuleAttrs in pairs(dataModule.valueAttributes) do
+				for dataModuleAttr, data in pairs(dataModuleAttrs) do
+					local valueFound = false
+
+					for value, attrs in pairs(markup.valueAttributes) do
+						if value == dataModuleValue then
+							valueFound = true
+
+							local valid = false
+
+							for attr, attrValue in pairs(attrs) do
+								if attr == dataModuleAttr then
+									valid = true
+
+									if data.validateDefaultValue then
+										data.validateDefaultValue(attrValue)
+									end
+
+									break
+								end
+							end
+
+							if not valid and not data.unrequired then
+								error(`Attribute "{dataModuleAttr}" of value "{value}" of markup "{dataModule.name}" was not found in the default markups list`)
+							end
+
+							break
+						end
+					end
+
+					if not valueFound then
+						error(`Value attributes of value "{dataModuleValue}" of markup "{dataModule.name}" were not found in the default markups list`)
+					end
+				end
+			end
+		end
+
+		if markup then
+			process(markup)
+		elseif stackableMarkup then
+			for _, markups in pairs(stackableMarkup.stack) do
+				if markups then
+					process(markups)
+				end
+			end
+
+			process(stackableMarkup._entryDefaultValues)
+		end
+	else	
+		error(`Markup "{dataModule.name}" was not found in the default markups list`)
+	end
+end
+
+for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+	if dataModule.onDefaultMarkupsChanged then
+		dataModule.onDefaultMarkupsChanged(config.DEFAULT_MARKUPS)
 	end
 end
 
@@ -82,10 +179,6 @@ HyperText.new = function(
 		HyperText
 	) :: types.hyperTextClassObject
 	
-	if markups then
-		self:UpdateDefaultMarkups(markups)
-	end
-	
 	self._destroyCon = container.Destroying:Once(function()
 		self:Destroy()
 	end)
@@ -105,11 +198,23 @@ HyperText.new = function(
 		end)
 	end
 
+	if markups then
+		local success, result = pcall(function()
+			self:UpdateDefaultMarkups(markups)
+		end)
+
+		if not success then
+			self:Destroy()
+			
+			error(result, 0)
+		end
+	end
+
 	return self
 end
 
 --[[
-	Returns a full markups shaped dict with values/attributes emptied to nil, except for a stackable markup's stack, which retains it default stack entries. Used for updating an object's default markups. To delete an optional default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
+	Returns a full markups shaped dict with values/attributes emptied to nil, except for a stackable markup's stack, which retains its default stack entries. Used for updating an object's default markups. To delete an optional default markup or attribute, set its value to `HyperText.DELETE`. For stackable markups, the following operations can be done (note that stack tables behave as dictionaries, not arrays):
 
 	```luau
 	local markups = HyperText.newMarkups()
@@ -150,6 +255,12 @@ methods.UpdateDefaultMarkups = function(
 	markups : types.markups
 )
 	util.mergeMarkups(self._markups, markups)
+
+	for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+		if dataModule.onDefaultMarkupsChanged then
+			dataModule.onDefaultMarkupsChanged(self._markups)
+		end
+	end
 end
 
 methods.Render = function(
@@ -1586,8 +1697,8 @@ methods._ParseAttrs = function(
 	markupValueEndPos : number,
 	tagEndPos : number,
 	markupValue : string?,
-	markupAttrs : types.dataModuleMarkupAttrs,
-	markupValuesAttrs : types.dataModuleMarkupValueAttrs
+	markupAttrs : types.dataModuleLooseAttrs,
+	markupValuesAttrs : types.dataModuleLooseValueAttrs
 ) : {{attr : string, schemaAttr : string, value : any, markupValue : string?}}
 	local text = self._text
 	local renderTraceback = self._renderTraceback
