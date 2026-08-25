@@ -41,7 +41,13 @@ module.shouldApplyFlipbookEffect = function(attrs : types.flipbookAttrs) : boole
 end
 
 module.cacheImageSize = function(imageId : string)
-	imageSizeCache:Get(getImageSizeCacheFetschingSchema(imageId))
+	local success, errmsg = pcall(function()
+		imageSizeCache:Get(getImageSizeCacheFetschingSchema(imageId))
+	end)
+
+	if not success then
+		warn(`Failed to cache image size for asset URI "{imageId}": {errmsg}`)
+	end
 end
 
 module.applyFlipbookEffect = function(
@@ -135,7 +141,7 @@ module.applyFlipbookEffect = function(
 					image.Destroying:Once(stop)
 				end
 			else
-				warn(`Failed to fetch EditableImage for asset URI {image.Image}: {imageSize}`)
+				warn(`Failed to fetch image size for asset URI "{image.Image}": {imageSize}`)
 			end
 		end
 	end
