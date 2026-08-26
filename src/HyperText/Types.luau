@@ -344,10 +344,6 @@ type function createDataModule(
 	local type_ = {
 		[types.singleton("name")] = markupName,
 		[types.singleton("type")] = moduleType,
-		[types.singleton("convert")] = types.newfunction(
-			{head = {types.string}, tail = types.any},
-			{head = {required(markupValue)}}
-		),
 		[types.singleton("validateDefaultValue")] = types.optional(
 			types.newfunction(
 				{head = {required(markupValue)}}
@@ -363,11 +359,18 @@ type function createDataModule(
 		[types.singleton("applyOnClear")] = applyOnClearType,
 		[types.singleton("attributes")] = createAttrConverters(attrs),
 		[types.singleton("valueAttributes")] = createValueAttrConverters(valueAttrs),
-		[types.singleton("onConstruction")] = createDataModuleOnConstruction(
+	}
+	
+	if moduleType:value() ~= "programmatic" then
+		type_[types.singleton("convert")] = types.newfunction(
+			{head = {types.string}, tail = types.any},
+			{head = {required(markupValue)}}
+		)
+		type_[types.singleton("onConstruction")] = createDataModuleOnConstruction(
 			hyperTextClassObjectType,
 			markupsType
 		)
-	}
+	end
 	
 	if moduleType:value() == "paired" then
 		local stackableType = isStackable
@@ -416,7 +419,7 @@ type function createDataModule(
 		
 	return types.newtable(type_)
 end
-export type dataModuleType = "paired" | "selfClosing"
+export type dataModuleType = "paired" | "selfClosing" | "programmatic"
 type dataModuleLooseAttrBase = {
 	convert : (value : string) -> any,
 	validateDefaultValue : ((value : any) -> ())?,
@@ -457,13 +460,16 @@ export type dataModuleLoose = {
 		>,
 		getClearingDuration : createDataModuleGetClearingDuration<markups>,
 		validate : createDataModuleValidate<markups>
-	}
-	| {
+	} & nonProgrammaticMarkupBase)
+	| ({
 		type : "selfClosing",
 		appendToCurrentWord : boolean?,
 		yieldFromIntervalOnPrint : boolean?,
 		onPrint_ : createSelfClosingMarkupDataModuleOnPrint<hyperTextClassObject, markups, Frame>?,
 		getSize : createDataModuleGetSize<hyperTextClassObject, markups, Vector2>?,
+	} & nonProgrammaticMarkupBase)
+	| {
+		type : "programmatic",
 	}
 )
 export type dataModule<

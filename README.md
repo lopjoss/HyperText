@@ -26,6 +26,16 @@ Self-closing tags do not use closing tags:
 <renderEvent=finished>
 ```
 
+Programmatic markups do not have tags. Change them through an object's default markups instead:
+
+```luau
+local markups = HyperText.newMarkups()
+markups.horizontalAlignment.value = Enum.HorizontalAlignment.Center
+markups.verticalAlignment.value = Enum.VerticalAlignment.Center
+
+hyperText:UpdateDefaultMarkups(markups)
+```
+
 Attributes are written inside the opening tag:
 
 ```text
@@ -560,7 +570,7 @@ Adds a line break for the specified amount. Only accepts a number equal or above
 
 </details>
 
-### Markups without tags
+### Programmatic markups
 
 These markups can only be applied by changing an object's default markups.
 
@@ -1093,7 +1103,44 @@ return module
 
 </details>
 
-Place your data module directly inside `Markups/Paired` or `Markups/SelfClosing`. Only direct children of these folders are discovered.
+<details>
+<summary><code>Listed here is an example of a programmatic markup data module.</code></summary>
+
+```luau
+--!strict
+
+local types = require("../../Types") -- HyperText types and data-module contracts.
+
+local name : "lineSpacing" = "lineSpacing" -- Selects the lineSpacing schema from types.markups.
+local type_ : "programmatic" = "programmatic" -- Declares this as a tagless programmatic markup.
+
+local module : types.dataModule<
+	typeof(name), -- Selects the exact markup schema.
+	typeof(type_) -- Selects the programmatic-markup contract.
+> = {
+	name = name, -- Must match the key in types.markups.
+	type = type_,
+
+	validateDefaultValue = function(value : number) -- Validates the initial value and later default-markup updates.
+		if value < 0 then
+			error("Value must be more than or equal to 0", 0)
+		end
+	end,
+
+	onDefaultMarkupsChanged = function(markups : types.markups) -- Runs after initial validation and every default-markup update.
+		-- Perform any shared preparation needed after lineSpacing changes.
+	end,
+
+	attributes = {},
+	valueAttributes = {},
+}
+
+return module
+```
+> Important note: The data module registers and validates the setting, but does not automatically give it rendering behavior. The code implementing the setting must read `markups.lineSpacing.value` where it affects construction or rendering.
+</details>
+
+Place your data module directly inside `Markups/Paired`, `Markups/SelfClosing`, or `Markups/Programmatic`, according to its type. Only direct children of these folders are discovered.
 
 </details>
 
@@ -1162,6 +1209,17 @@ Both modes can use `onConstruction`.
 
 </details>
 
+<details>
+<summary><code>Programmatic markups</code></summary>
+
+A programmatic markup represents a setting that is configured through `HyperText.newMarkups()`, `.new(container, markups)`, or `:UpdateDefaultMarkups(markups)`. It cannot be opened through an ASCII tag and does not participate in construction or printing callbacks.
+
+Its data module may use `validateDefaultValue` on the main value, attributes, and value-specific attributes, and may use `onDefaultMarkupsChanged` to react after the complete defaults have been validated or updated. It does not implement `convert`, `onConstruction`, `onPrint`, clearing callbacks, or self-closing layout and printing callbacks.
+
+The setting's actual behavior must be implemented by code that reads it from the relevant markup state. The built-in alignment, size-constraint, scale-dimension, and Z-index settings use programmatic modules.
+
+</details>
+
 ### Useful references
 
 - `color` for a minimal paired markup.
@@ -1174,3 +1232,5 @@ Both modes can use `onConstruction`.
 - `br` for structural self-closing construction.
 - `wait` for a zero-size inline self-closing action.
 - `img` for a rendered inline self-closing object with `onConstruction`, layout, and printing hooks.
+- `horizontalAlignment` for a minimal programmatic markup.
+- `scaleDimension` for a programmatic setting consumed by HyperText's sizing logic.

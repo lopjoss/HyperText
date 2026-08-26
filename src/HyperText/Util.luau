@@ -146,7 +146,11 @@ end
 util.getAllMarkupDataModules = function(exclude : {types.markup}?) : {types.dataModuleLoose}
 	local modules : {types.dataModuleLoose} = {}
 
-	for _, v in ipairs({script.Parent.Markups.Paired, script.Parent.Markups.SelfClosing}) do
+	for _, v in ipairs({
+		script.Parent.Markups.Paired,
+		script.Parent.Markups.SelfClosing,
+		script.Parent.Markups.Programmatic
+	}) do
 		for _, v in ipairs(v:GetChildren()) do
 			if v:IsA("ModuleScript") and (not exclude or not table.find(exclude :: {string}, v.Name)) then
 				local module : types.dataModuleLoose? = util.safeRequire(v :: ModuleScript)
