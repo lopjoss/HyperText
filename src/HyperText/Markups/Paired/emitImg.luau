@@ -4,19 +4,6 @@ local types = require("../../Types")
 local util = require("../../Util")
 local emitImage = require("../Helpers/EmitImage")
 local emitImgAttrsConverters = require("../Helpers/EmitImgAttrsConverters")
-local flipbookEffect = require("../Helpers/FlipbookEffect")
-
-local function cacheImageSize(markups : types.markups)
-	for _, markups in pairs(markups.emitImg.stack) do
-		if markups and flipbookEffect.shouldApplyFlipbookEffect(markups.attributes) then
-			local imageURI = typeof(markups.value) == "string"
-				and markups.value
-				or "rbxassetid://" .. markups.value
-
-			flipbookEffect.cacheImageSize(imageURI)
-		end
-	end
-end
 
 local name : "emitImg" = "emitImg"
 local type_ : "paired" = "paired"
@@ -30,9 +17,11 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		cacheImageSize(markups)
+		util.cacheStackableImageMarkupLastEntry(markups.emitImg.stack :: index<types.stack<types.markupIndexable>, "stack">)
 	end,
-	onDefaultMarkupsChanged = cacheImageSize,
+	onDefaultMarkupsChanged = function(markups : types.markups)
+		util.fullyCacheStackableImageMarkup(markups.emitImg :: types.stack<types.markupIndexable>)
+	end,
 	onPrint = function(
 		obj : types.hyperTextClassObject,
 		printerData : types.printerDataRowEntry,

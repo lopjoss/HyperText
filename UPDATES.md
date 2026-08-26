@@ -5,7 +5,6 @@
 	- applyToWhitespace field in markup datamodule
 	v4.2:
 	- add bgImg markup
-	- make img markups accept string asset ids
 ]]
 
 --[[	v4.2.0		9-8-2026

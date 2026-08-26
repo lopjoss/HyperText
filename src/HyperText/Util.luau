@@ -5,6 +5,7 @@ local TextService = game:GetService("TextService")
 local memoizer = require("./Memoizer")
 local types = require("./Types")
 local config = require("./Config")
+local flipbookEffect = require("./Markups/Helpers/FlipbookEffect")
 
 local util = {}
 
@@ -371,12 +372,7 @@ util.updateMarkups = function(
 				local entry = util.deepCopy(stackableMarkup._entryDefaultValues)
 				entry.value = value
 				
-				local i = 0
-				for j, _ in pairs(stackableMarkup.stack) do
-					if j > i then
-						i = j
-					end
-				end
+				local _, i = util.getLastEntryFromStack(stackableMarkup.stack)
 				stackableMarkup.stack[i + 1] = entry
 			else
 				stackableMarkup.stack = value
@@ -389,14 +385,8 @@ util.updateMarkups = function(
 	local attrs : index<types.markupIndexable, "attributes">? = markup and markup.attributes or nil
 	local valueAttrs : index<types.markupIndexable, "valueAttributes">? = markup and markup.valueAttributes or nil
 	if stackableMarkup then
-		local i = 1
-		for j, _ in pairs(stackableMarkup.stack) do
-			if j > i then
-				i = j
-			end
-		end
-		
-		local entry = stackableMarkup.stack[i]
+		local entry = util.getLastEntryFromStack(stackableMarkup.stack)
+
 		if entry then
 			attrs = entry.attributes
 			valueAttrs = entry.valueAttributes
@@ -505,6 +495,32 @@ util.fetchTextBounds = function(
 	return textBoundsCache:Get(fetschingSchema)
 end
 
+util.fullyCacheStackableImageMarkup = function(markup : types.stack<types.markupIndexable>)
+	for _, v in ipairs({markup.stack, {markup._entryDefaultValues} :: {types.markupIndexable?}}) do
+		for _, markups in pairs(v) do
+			if markups and flipbookEffect.shouldApplyFlipbookEffect(markups.attributes) then
+				local imageURI = typeof(markups.value) == "string"
+					and markups.value
+					or "rbxassetid://" .. markups.value
+
+				flipbookEffect.cacheImageSize(imageURI)
+			end
+		end
+	end
+end
+
+util.cacheStackableImageMarkupLastEntry = function(stack : index<types.stack<types.markupIndexable>, "stack">)
+	local entry = util.getLastEntryFromStack(stack)
+
+	if flipbookEffect.shouldApplyFlipbookEffect(entry.attributes) then
+		local imageURI = typeof(entry.value) == "string"
+			and entry.value
+			or "rbxassetid://" .. entry.value
+
+		flipbookEffect.cacheImageSize(imageURI)
+	end
+end
+
 util.removeEntryFromTransformUpdater = function(
 	obj : types.hyperTextClassObject,
 	entry : types.printerDataRowEntry,
@@ -544,6 +560,20 @@ end
 
 util.getRandomFromRange = function(range : NumberRange) : number
 	return (range.Max - range.Min) * math.random() + range.Min
+end
+
+util.getLastEntryFromStack = function<T>(
+	stack : index<types.stack<T>, "stack">
+) : (T, number)
+	local i = 0
+
+	for j, _ in pairs(stack) do
+		if j > i then
+			i = j
+		end
+	end
+
+	return stack[i], i 
 end
 
 util.stringToURI = function(str : string) : string

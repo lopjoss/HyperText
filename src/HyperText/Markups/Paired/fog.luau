@@ -5,15 +5,6 @@ local util = require("../../Util")
 local config = require("../../Config")
 local emitImage = require("../Helpers/EmitImage")
 local emitImgAttrsConverters = require("../Helpers/EmitImgAttrsConverters")
-local flipbookEffect = require("../Helpers/FlipbookEffect")
-
-local function cacheImageSize(markups : types.markups)
-	for _, markups in pairs(markups.fog.stack) do
-		if markups and markups.value and flipbookEffect.shouldApplyFlipbookEffect(markups.attributes) then
-			flipbookEffect.cacheImageSize("rbxassetid://" .. config.FOG_IMG_ID)
-		end
-	end
-end
 
 local name : "fog" = "fog"
 local type_ : "paired" = "paired"
@@ -27,9 +18,11 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		cacheImageSize(markups)
+		util.cacheStackableImageMarkupLastEntry(markups.fog.stack :: index<types.stack<types.markupIndexable>, "stack">)
 	end,
-	onDefaultMarkupsChanged = cacheImageSize,
+	onDefaultMarkupsChanged = function(markups : types.markups)
+		util.fullyCacheStackableImageMarkup(markups.fog :: types.stack<types.markupIndexable>)
+	end,
 	onPrint = function(
 		obj : types.hyperTextClassObject,
 		printerData : types.printerDataRowEntry,
