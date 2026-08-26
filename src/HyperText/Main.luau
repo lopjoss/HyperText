@@ -58,7 +58,7 @@ for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules
 				if dataModule.validateDefaultValue then
 					dataModule.validateDefaultValue(markup.value)
 				end
-			elseif not dataModule.unrequired then
+			elseif dataModule.type ~= "paired" or not dataModule.unrequired then
 				error(`Markup {dataModule.name} has no assigned value in the default markup list`)
 			end
 

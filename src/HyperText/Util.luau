@@ -173,7 +173,7 @@ util.mergeMarkups = function(
 	)
 		if markup.value ~= nil then
 			if markup.value == util.DELETE_SYNTAX then
-				if dataModule.unrequired then
+				if dataModule.type == "paired" and dataModule.unrequired then
 					baseMarkup.value = nil
 				else
 					warn(

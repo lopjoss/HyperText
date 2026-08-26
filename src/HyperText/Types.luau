@@ -176,7 +176,7 @@ type function createUpdater()
 end
 type function createDataModuleOnPrint(
 	isSelfClosingMarkup : type,
-	applyOnClear : boolean?,
+	applyOnClear : type,
 	
 	markupsType : type,
 	hyperTextClassObjectType : type,
@@ -187,7 +187,7 @@ type function createDataModuleOnPrint(
 	textLabelType : type,
 	imageLabelType : type
 )
-	local head = {
+	local head : {any} = {
 		hyperTextClassObjectType,
 		createPrinterDataRowEntry(
 			isSelfClosingMarkup,
@@ -203,7 +203,7 @@ type function createDataModuleOnPrint(
 		createUpdater(),
 	}
 
-	if applyOnClear then
+	if not applyOnClear:is("singleton") or applyOnClear:value() then
 		table.insert(head, applyOnClear)
 	end
 
@@ -314,7 +314,8 @@ type function createDataModule(
 	local markup = markupsType:readproperty(markupName)
 	
 	if markup == nil then
-		error("invalid markup name")
+		-- error("invalid markup name")
+		return types.never
 	end
 
 	local isStackable = markup:readproperty(types.singleton("stack")) and true or false
@@ -329,9 +330,9 @@ type function createDataModule(
 		end
 	end
 	
-	local markupValue = markup:readproperty(types.singleton("value"))
-	local attrs = markup:readproperty(types.singleton("attributes"))
-	local valueAttrs = markup:readproperty(types.singleton("valueAttributes"))
+	local markupValue = markup:readproperty(types.singleton("value")) :: type
+	local attrs = markup:readproperty(types.singleton("attributes")) :: type
+	local valueAttrs = markup:readproperty(types.singleton("valueAttributes")) :: type
 	
 	local applyToImagesType = applyToImages:value()
 		and types.singleton(true)
@@ -423,19 +424,21 @@ type dataModuleLooseAttrBase = {
 }
 export type dataModuleLooseAttrs = {[string] : dataModuleLooseAttrBase}
 export type dataModuleLooseValueAttrs = {[string] : {[string] : dataModuleLooseAttrBase}}
-export type dataModuleLoose = {
+type nonProgrammaticMarkupBase = {
 	convert : (value : string) -> any,
+	onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>,
+}
+export type dataModuleLoose = {
 	name : string,
 	type : dataModuleType,
-	unrequired : boolean?,
-	attributes : dataModuleLooseAttrs,
-	valueAttributes : dataModuleLooseValueAttrs,
-	onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>,
 	validateDefaultValue : ((value : any) -> ())?,
 	onDefaultMarkupsChanged : ((markups : markups) -> ())?,
+	attributes : dataModuleLooseAttrs,
+	valueAttributes : dataModuleLooseValueAttrs,
 } & (
-	{
+	({
 		type : "paired",
+		unrequired : boolean?,
 		applyToImages : boolean?,
 		applyOnClear : boolean?,
 		stackable : boolean?,
