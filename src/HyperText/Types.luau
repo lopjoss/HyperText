@@ -385,7 +385,7 @@ type function createDataModule(
 		type_[types.singleton("stackable")] = stackableType
 		type_[types.singleton("onPrint")] = createDataModuleOnPrint(
 			applyToImages:value() and types.unknown or types.singleton(false),
-			applyOnClear:value() and types.boolean or nil,
+			applyOnClear:value() and types.boolean or types.singleton(nil),
 			
 			markupsType,
 			hyperTextClassObjectType,
@@ -496,6 +496,7 @@ export type dataModule<
 >
 
 export type onPrintMarkupSpanData = {
+	rowEntryIndices : {number},
 	characterPosition : Vector2,
 	characterSize : Vector2,
 	spanPosition : Vector2,

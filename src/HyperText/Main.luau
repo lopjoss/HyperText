@@ -558,6 +558,7 @@ methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
 								end									
 								
 								local spanData : types.onPrintMarkupSpanData = {
+									rowEntryIndices = span.rowEntryIndices,
 									characterSize = Vector2.new(entry.constructionDataRowEntry.width, entry.constructionDataRowEntry.height),
 									characterPosition = self:_GetRowEntryPosition(entry.index),
 									spanSize = span.size,
@@ -967,6 +968,7 @@ methods._Print = function(
 									end							
 									
 									local spanData : types.onPrintMarkupSpanData = {
+										rowEntryIndices = span.rowEntryIndices,
 										characterSize = Vector2.new(entry.width, entry.height),
 										characterPosition = self:_GetRowEntryPosition(entryIndex),
 										spanSize = span.size,
