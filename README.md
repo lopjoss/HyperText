@@ -303,6 +303,27 @@ Emits an image with the given ID or URI as a particle effect from the rendered c
 </details>
 
 <details>
+<summary><code>bgImg</code></summary>
+
+Displays an image behind the complete span of marked text. The image’s ZIndex is one less than the ZIndex markup value, so the ZIndex markup value must therefore be at least 2 greater than the container’s ZIndex for the image to be visible. This markup is stackable and inherits the same flipbook attributes as the img markup.
+
+<table>
+<tr><th>Luau value</th><td><code>number | string</code></td></tr>
+<tr><th>ASCII value</th><td><code>asset ID | asset URI</code></td></tr>
+</table>
+
+#### Attributes
+
+| Attribute | Luau value | ASCII value | Description |
+| --- | --- | --- | --- |
+| `widthMul` | `number?` | `number \| /` | Multiplies the background image's width relative to the marked text's width. Only accepts a number above or equal to 0. |
+| `heightMul` | `number?` | `number \| /` | Multiplies the background image's height relative to the marked text's height. Only accepts a number above or equal to 0. |
+| `trans` | `number` | `number` | The transparency of the background image. |
+| `color` | `Color3` | `r,g,b` | The color of the background image. |
+
+</details>
+
+<details>
 <summary><code>stroke</code></summary>
 
 Gives the rendered text a stroke.

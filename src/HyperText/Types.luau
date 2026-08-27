@@ -922,6 +922,13 @@ export type animValueAttrs = {
 		startScale : number,
 	}
 }
+export type bgImgAttrs = {
+	heightMul : number?,
+	widthMul : number?,
+	trans : number,
+	color : Color3,
+}
+export type bgImgAttrsConverters = createAttrConverters<bgImgAttrs>
 export type emitImageAttrsConverters = createAttrConverters<emitImgAttrs>
 export type gradientAttrsConverters = createAttrConverters<gradientAttrs>
 export type animAttrsConverters = createAttrConverters<animAttrs>
@@ -1110,6 +1117,11 @@ export type markups = {
 		},
 		valueAttributes : {},
 	},
+	bgImg : stack<{
+		value : number | string,
+		attributes : bgImgAttrs & flipbookAttrs,
+		valueAttributes : {},
+	}>,
 	
 	-- untagged markups
 	horizontalAlignment : {

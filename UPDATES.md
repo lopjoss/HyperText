@@ -3,14 +3,13 @@
 	- classes
 	- bidirectional support
 	- applyToWhitespace field in markup datamodule
-	v4.2:
-	- add bgImg markup
 ]]
 
 --[[	v4.2.0		9-8-2026
 
 	ADDITIONS:
 		added caching limits in configs
+		added the bgImg markup
 
 	CHANGES:
 		typewriter sounds are now preloaded during parsing, preventing delays when the soundId markup changes during rendering
