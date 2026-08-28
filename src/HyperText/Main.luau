@@ -1868,8 +1868,24 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 	then
 		local i = 1
 		local t = text
+		local markupStackEntries : {[string] : number} = {}
 		local markupHistory : {string} = {}
 		
+		for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+			if dataModule.type == "paired" and dataModule.stackable then
+				local stackableMarkups = self._markups :: {[string] : types.stack<types.markupIndexable>}
+				local defaultStack = (stackableMarkups)[dataModule.name].stack
+
+				markupStackEntries[dataModule.name] = 0
+
+				for _, markups in pairs(defaultStack) do
+					if markups then
+						markupStackEntries[dataModule.name] += 1
+					end
+				end
+			end
+		end
+
 		while i <= #t do
 			local i_local = i
 			local char = string.sub(t, i, i)
@@ -1931,24 +1947,37 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 											local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
 
 											if success or #attrsValues > 0 then
-												table.insert(markupHistory, 1, markupType)
-												
-												self._constructionScheduler:Append(function()
-													if self._constructionMarkups then
-														self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
-
-														if dataModule.onConstruction then
-															local markups = util.deepCopy(self._constructionMarkups)
-															
-															dataModule.onConstruction(
-																self,
-																markups
-															)
-														end
-
-														self:_CreateSpan(markupType)
+												if not dataModule.stackable or convertedValue or markupStackEntries[dataModule.name] > 0 then
+													if dataModule.stackable then
+														markupStackEntries[dataModule.name] += 1
 													end
-												end)
+													
+													table.insert(markupHistory, 1, markupType)
+													
+													self._constructionScheduler:Append(function()
+														if self._constructionMarkups then
+															self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
+	
+															if dataModule.onConstruction then
+																local markups = util.deepCopy(self._constructionMarkups)
+																
+																dataModule.onConstruction(
+																	self,
+																	markups
+																)
+															end
+	
+															self:_CreateSpan(markupType)
+														end
+													end)
+												else
+													warn(
+														"Failed to parse tag \""
+															.. string.sub(t, i, tagEndPos) 
+															.. "\": no entries in markup stack found"
+															.. "\n" .. renderTraceback
+													)
+												end
 											else
 												warn(
 													"Failed to parse tag \""
@@ -2063,6 +2092,10 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 								if #markupHistory > 0 then
 									for k, v in ipairs(markupHistory) do
 										if string.lower(v) == string.lower(markupType) then
+											if dataModule.stackable then
+												markupStackEntries[dataModule.name] -= 1
+											end
+
 											table.remove(markupHistory, k)
 											
 											self._constructionScheduler:Append(function()
