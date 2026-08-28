@@ -73,7 +73,10 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 					local verticalAlignment = printerData.markups.verticalAlignment.value
 
 					local image = Instance.new("ImageLabel", parent)
-					image.AnchorPoint = Vector2.new(.5, .5)
+					image.AnchorPoint = Vector2.new(
+						.5,
+						verticalAlignment == Enum.VerticalAlignment.Bottom and 0 or .5
+					)
 					image.Name = "Image_" .. imageURI
 					image.BackgroundTransparency = 1
 					image.Image = imageURI
@@ -103,7 +106,7 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 						and .5 + ((
 							spanData.spanPosition.Y - spanData.spanSize.Y / 2
 						) / obj._container.AbsoluteSize.Y)
-						or 1 - ((spanData.spanPosition.Y + spanData.spanSize.Y / 2) / obj._container.AbsoluteSize.Y)
+						or 1 - (spanData.spanPosition.Y / obj._container.AbsoluteSize.Y)
 					)
 
 					flipbookEffect.applyFlipbookEffect(
