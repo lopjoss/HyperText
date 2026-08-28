@@ -141,6 +141,7 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 					end									
 
 					local spanData : types.onPrintMarkupSpanData = {
+						rowEntryIndices = span.rowEntryIndices,
 						characterSize = Vector2.new(entry.width, entry.height),
 						characterPosition = obj:_GetRowEntryPosition(index),
 						spanSize = span.size,
