@@ -58,13 +58,10 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		local imageURI = typeof(markups.img.value) == "string"
-			and markups.img.value
-			or "rbxassetid://" .. markups.img.value
-
-		if flipbookEffect.shouldApplyFlipbookEffect(markups.img.attributes) then
-			flipbookEffect.cacheImageSize(imageURI)
-		end
+		util.cacheImageMarkup(markups.img :: types.markupIndexable)
+	end,
+	onDefaultMarkupsChanged = function(markups : types.markups)
+		util.cacheImageMarkup(markups.img :: types.markupIndexable)
 	end,
 	onPrint_ = function(
 		obj : types.hyperTextClassObject,

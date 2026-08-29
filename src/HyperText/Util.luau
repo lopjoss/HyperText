@@ -502,27 +502,27 @@ end
 util.fullyCacheStackableImageMarkup = function(markup : types.stack<types.markupIndexable>)
 	for _, v in ipairs({markup.stack, {markup._entryDefaultValues} :: {types.markupIndexable?}}) do
 		for _, markups in pairs(v) do
-			if markups and flipbookEffect.shouldApplyFlipbookEffect(markups.attributes) then
-				local imageURI = typeof(markups.value) == "string"
-					and markups.value
-					or "rbxassetid://" .. markups.value
-
-				flipbookEffect.cacheImageSize(imageURI)
+			if markups then
+				util.cacheImageMarkup(markups)
 			end
 		end
+	end
+end
+
+util.cacheImageMarkup = function(markup : types.markupIndexable)
+	if flipbookEffect.shouldApplyFlipbookEffect(markup.attributes) then
+		local imageURI = typeof(markup.value) == "string"
+			and markup.value
+			or "rbxassetid://" .. markup.value
+
+		flipbookEffect.cacheImageSize(imageURI)
 	end
 end
 
 util.cacheStackableImageMarkupLastEntry = function(stack : index<types.stack<types.markupIndexable>, "stack">)
 	local entry = util.getLastEntryFromStack(stack)
 
-	if flipbookEffect.shouldApplyFlipbookEffect(entry.attributes) then
-		local imageURI = typeof(entry.value) == "string"
-			and entry.value
-			or "rbxassetid://" .. entry.value
-
-		flipbookEffect.cacheImageSize(imageURI)
-	end
+	util.cacheImageMarkup(entry)
 end
 
 util.removeEntryFromTransformUpdater = function(
