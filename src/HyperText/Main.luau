@@ -333,7 +333,15 @@ methods.Render = function(
 						if dataModule.type == "paired" then
 							self._constructionData.spans[dataModule.name] = {}
 
-							self:_CreateSpan(dataModule.name)
+							if not dataModule.stackable then
+								self:_CreateSpan(dataModule.name)
+							else
+								local defaultStack = (self._markups :: {[string] : types.stack<types.markupIndexable>})[dataModule.name].stack
+
+								for _, markups in pairs(defaultStack) do
+									self:_CreateSpan(dataModule.name)
+								end
+							end
 						end
 					end
 					
@@ -948,42 +956,11 @@ methods._Print = function(
 						end)
 
 						if not performAsWhiteSpace then
-							for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
-								if 
-									dataModule.type == "paired"
-									and dataModule.onPrint
-								then
-									local spans = util.indexCaseInsensitive(
-										self._constructionData.spans,
-										dataModule.name
-									)
-									local span : types.spanData
-
-									for _, candidate in ipairs(spans) do
-										if table.find(candidate.rowEntryIndices, entryIndex) then
-											span = candidate
-											
-											break
-										end
-									end							
-									
-									local spanData : types.onPrintMarkupSpanData = {
-										rowEntryIndices = span.rowEntryIndices,
-										characterSize = Vector2.new(entry.width, entry.height),
-										characterPosition = self:_GetRowEntryPosition(entryIndex),
-										spanSize = span.size,
-										spanPosition = span.position,
-									}
-									
-									dataModule.onPrint(
-										self,
-										printerRowEntry :: types.printerDataRowEntry,
-										spanData,
-										updater,
-										false
-									)
-								end
-							end
+							util.fireAllDataModuleOnPrints(
+								self,
+								printerRowEntry :: types.printerDataRowEntry,
+								updater
+							)
 						end
 					end
 				end
@@ -1413,7 +1390,9 @@ methods._AppendSelfClosingMarkupToSpans = function(
 				if not spanData.closed then
 					table.insert(spanData.rowEntryIndices, index)
 
-					break
+					if not dataModule.stackable then
+						break
+					end
 				end
 			end
 		end
@@ -1463,7 +1442,9 @@ methods._AppendStringToSpans = function(
 					if not spanData.closed then
 						table.insert(spanData.rowEntryIndices, index + first - 1)
 						
-						break
+						if not dataModule.stackable then
+							break
+						end
 					end
 				end
 			end

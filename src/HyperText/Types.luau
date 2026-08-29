@@ -180,7 +180,7 @@ type function createDataModuleOnPrint(
 	
 	markupsType : type,
 	hyperTextClassObjectType : type,
-	onPrintMarkupSnanDataType : type,
+	onPrintMarkupSpanDataType : type,
 	frameType : type,
 	guiObjectType : type,
 	vector2Type : type,
@@ -199,7 +199,7 @@ type function createDataModuleOnPrint(
 			textLabelType,
 			imageLabelType
 		),
-		onPrintMarkupSnanDataType,
+		onPrintMarkupSpanDataType,
 		createUpdater(),
 	}
 
@@ -303,7 +303,7 @@ type function createDataModule(
 	applyOnClear : type,
 	
 	hyperTextClassObjectType : type,
-	onPrintMarkupSnanDataType : type,
+	onPrintMarkupSpanDataType : type,
 	markupsType : type,
 	frameType,
 	guiObjectType,
@@ -389,7 +389,14 @@ type function createDataModule(
 			
 			markupsType,
 			hyperTextClassObjectType,
-			onPrintMarkupSnanDataType,
+			not isStackable and onPrintMarkupSpanDataType or types.newtable(
+				nil,
+				{
+					index = types.number,
+					readresult = onPrintMarkupSpanDataType,
+					writeresult = onPrintMarkupSpanDataType,
+				}
+			),
 			frameType,
 			guiObjectType,
 			vector2Type,
@@ -451,7 +458,7 @@ export type dataModuleLoose = {
 		
 			markups,
 			hyperTextClassObject,
-			onPrintMarkupSpanData,
+			onPrintMarkupSpanData | {onPrintMarkupSpanData},
 			Frame,
 			GuiObject,
 			Vector2,

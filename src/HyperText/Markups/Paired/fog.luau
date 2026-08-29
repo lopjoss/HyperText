@@ -26,7 +26,7 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 	onPrint = function(
 		obj : types.hyperTextClassObject,
 		printerData : types.printerDataRowEntry,
-		spanData : types.onPrintMarkupSpanData,
+		spanData : {types.onPrintMarkupSpanData},
 		updater : {[string] : (dt : number) -> ()}
 	)
 		for _, markups in pairs(printerData.markups.fog.stack) do

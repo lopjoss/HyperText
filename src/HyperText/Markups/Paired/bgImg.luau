@@ -54,11 +54,15 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 	onPrint = function(
 		obj : types.hyperTextClassObject,
 		printerData : types.printerDataRowEntry<false>,
-		spanData : types.onPrintMarkupSpanData,
+		spanData : {types.onPrintMarkupSpanData},
 		updater : {[string] : (dt : number) -> ()}
 	)
-		if printerData.index == spanData.rowEntryIndices[1] and obj._contentFolder then
-			for _, markups in pairs(printerData.markups.bgImg.stack) do
+		local index = 1
+
+		for _, markups in pairs(printerData.markups.bgImg.stack) do
+			local spanData = spanData[index]
+
+			if printerData.index == spanData.rowEntryIndices[1] and obj._contentFolder then
 				if markups then
 					local imageURI = typeof(markups.value) == "string"
 						and markups.value
@@ -116,6 +120,8 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 					)
 				end
 			end
+
+			index += 1
 		end
 	end,
 	convert = util.stringToURI,

@@ -5,7 +5,6 @@ local util = require("../../Util")
 local appendFlipbookAttrsConverters = require("../Helpers/AppendFlipbookAttrsConverters")
 local flipbookEffect = require("../Helpers/FlipbookEffect")
 
-local dataModules = util.getAllMarkupDataModules({"img"})
 local attrsConverters : types.imgAttrsConverters = {
 	plain = {
 		convert = util.stringToBoolean,
@@ -117,42 +116,17 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 		)
 		
 		if not markups.img.attributes.plain then
-			for dataModule in util.iterateMarkupDataModulesByPrintPriority(dataModules) do
-				if 
-					dataModule.type == "paired"
-					and dataModule.applyToImages
-					and dataModule.onPrint
-				then
-					local spans = util.indexCaseInsensitive(
-						obj._constructionData.spans,
-						dataModule.name
-					)
-					local span : types.spanData
-
-					for _, candidate in ipairs(spans) do
-						if table.find(candidate.rowEntryIndices, index) then
-							span = candidate
-
-							break
-						end
-					end									
-
-					local spanData : types.onPrintMarkupSpanData = {
-						rowEntryIndices = span.rowEntryIndices,
-						characterSize = Vector2.new(entry.width, entry.height),
-						characterPosition = obj:_GetRowEntryPosition(index),
-						spanSize = span.size,
-						spanPosition = span.position,
-					}
-					
-					dataModule.onPrint(
-						obj,
-						printerRowEntry,
-						spanData,
-						updater
-					)
+			util.fireAllDataModuleOnPrints(
+				obj,
+				printerRowEntry,
+				updater,
+				{"img"},
+				function(dataModule)
+					return dataModule.type == "paired"
+						and dataModule.applyToImages
+						and true or false
 				end
-			end
+			)
 		end
 	end,
 	convert = util.stringToURI,
