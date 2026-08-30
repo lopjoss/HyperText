@@ -238,7 +238,7 @@ HyperText.newMarkups = function()
 end
 
 --[[
-	Returns a new markup entry which is inserted into a stackable markup at the given index and receives the markup's default entry values. Negative or extremely large indices will cause unintended behaviour.
+	Returns a new markup stack entry with values/attributes emptied to nil, which is inserted into a stackable markup at the given index. Negative or extremely large indices will cause unintended behaviour.
 ]]
 HyperText.insertStackEntry = function<T>(
 	markup : types.stack<T>,
