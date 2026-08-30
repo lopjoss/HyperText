@@ -116,19 +116,20 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 			updater
 		)
 		
-		if not markups.img.attributes.plain then
-			util.fireAllDataModuleOnPrints(
-				obj,
-				printerRowEntry,
-				updater,
-				{"img"},
-				function(dataModule)
-					return dataModule.type == "paired"
-						and dataModule.applyToImages
-						and true or false
-				end
-			)
-		end
+		util.fireAllDataModuleOnPrints(
+			obj,
+			printerRowEntry,
+			updater,
+			{"img"},
+			function(dataModule)
+				return dataModule.type == "paired" and
+					(if not markups.img.attributes.plain then
+						dataModule.applyToImages
+					else
+						dataModule.alwaysApplyToImages)
+					and true or false
+			end
+		)
 	end,
 	convert = util.stringToURI,
 	attributes = appendFlipbookAttrsConverters(
