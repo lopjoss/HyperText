@@ -38,9 +38,12 @@ local attrsConverters : types.bgImgAttrsConverters = {
 
 local name : "bgImg" = "bgImg"
 local type_ : "paired" = "paired"
-local module : types.dataModule<typeof(name), typeof(type_)> = {
+local applyToImages : true = true
+local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImages)> = {
 	type = type_,
 	name = name,
+	applyToImages = applyToImages,
+	alwaysApplyToImages = true,
 	
 	onConstruction = function(
 		obj : types.hyperTextClassObject,
