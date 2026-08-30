@@ -78,6 +78,7 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 		image.Name = "Image_" .. imageURI
 		image.BackgroundTransparency = 1
 		image.Image = imageURI
+		image.LayoutOrder = index
 		image.ImageTransparency = markups.img.attributes.trans or markups.trans.value
 		image.ImageColor3 = markups.img.attributes.color
 		image.ZIndex = markups.ZIndex.value

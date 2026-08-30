@@ -20,6 +20,9 @@
 		self-closing markups tags do not necessarily need an assigned value anymore, if no value is assigned it'll use its default value
 		all image markup now support images from URI's
 
+	FIXES:
+		fixed plain images being inserted at the start of a new row
+
 ]]
 
 --[[	v4.1.0		9-8-2026
