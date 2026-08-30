@@ -57,71 +57,84 @@ local module : types.dataModule<typeof(name), typeof(type_)> = {
 		spanData : {types.onPrintMarkupSpanData},
 		updater : {[string] : (dt : number) -> ()}
 	)
-		local index = 1
-
-		for _, markups in pairs(printerData.markups.bgImg.stack) do
-			local spanData = spanData[index]
-
-			if printerData.index == spanData.rowEntryIndices[1] and obj._contentFolder then
+		if obj._contentFolder then
+			local index = 1
+	
+			for _, markups in pairs(printerData.markups.bgImg.stack) do
 				if markups then
-					local imageURI = typeof(markups.value) == "string"
-						and markups.value
-						or "rbxassetid://" .. markups.value
-
-					local parent: Folder = obj._contentFolder:FindFirstChild("BackgroundImages") :: Folder?
-						or Instance.new("Folder", obj._contentFolder)
-					parent.Name = "BackgroundImages"
-
-					local widthMul = markups.attributes.widthMul or 1
-					local heightMul = markups.attributes.heightMul or 1
-					local verticalAlignment = printerData.markups.verticalAlignment.value
-
-					local image = Instance.new("ImageLabel", parent)
-					image.AnchorPoint = Vector2.new(
-						.5,
-						verticalAlignment == Enum.VerticalAlignment.Bottom and 0 or .5
-					)
-					image.Name = "Image_" .. imageURI
-					image.BackgroundTransparency = 1
-					image.Image = imageURI
-					image.ImageTransparency = markups.attributes.trans
-					image.ImageColor3 = markups.attributes.color
-					image.ZIndex = printerData.markups.ZIndex.value - 1
-					image.SizeConstraint = printerData.markups.sizeConstraint.value
-					image.Size = UDim2.fromScale(
-						((
-							printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
-							or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+					local spanData = spanData[index]
+					local firstVisibleRowEntryIndex : number
+	
+					for _, index in ipairs(spanData.rowEntryIndices) do
+						local constructionData = obj._constructionData.rowEntries[index]
+						
+						if Vector2.new(constructionData.width, constructionData.height).Magnitude > 0 then
+							firstVisibleRowEntryIndex = index
+							
+							break
+						end
+					end
+	
+					if printerData.index == firstVisibleRowEntryIndex then
+						local imageURI = typeof(markups.value) == "string"
+							and markups.value
+							or "rbxassetid://" .. markups.value
+	
+						local parent: Folder = obj._contentFolder:FindFirstChild("BackgroundImages") :: Folder?
+							or Instance.new("Folder", obj._contentFolder)
+						parent.Name = "BackgroundImages"
+	
+						local widthMul = markups.attributes.widthMul or 1
+						local heightMul = markups.attributes.heightMul or 1
+						local verticalAlignment = printerData.markups.verticalAlignment.value
+	
+						local image = Instance.new("ImageLabel", parent)
+						image.AnchorPoint = Vector2.new(
+							.5,
+							verticalAlignment == Enum.VerticalAlignment.Bottom and 0 or .5
 						)
-								and spanData.spanSize.X / obj._container.AbsoluteSize.X
-							or spanData.spanSize.X / obj._container.AbsoluteSize.Y) * widthMul,
-						((
-							printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
-							or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+						image.Name = "Image_" .. imageURI
+						image.BackgroundTransparency = 1
+						image.Image = imageURI
+						image.ImageTransparency = markups.attributes.trans
+						image.ImageColor3 = markups.attributes.color
+						image.ZIndex = printerData.markups.ZIndex.value - 1
+						image.SizeConstraint = printerData.markups.sizeConstraint.value
+						image.Size = UDim2.fromScale(
+							((
+								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+							)
+									and spanData.spanSize.X / obj._container.AbsoluteSize.X
+								or spanData.spanSize.X / obj._container.AbsoluteSize.Y) * widthMul,
+							((
+								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+							)
+									and spanData.spanSize.Y / obj._container.AbsoluteSize.Y
+								or spanData.spanSize.Y / obj._container.AbsoluteSize.X) * heightMul
 						)
-								and spanData.spanSize.Y / obj._container.AbsoluteSize.Y
-							or spanData.spanSize.Y / obj._container.AbsoluteSize.X) * heightMul
-					)
-					image.Position = UDim2.fromScale(
-						(spanData.spanPosition.X + spanData.spanSize.X / 2) / obj._container.AbsoluteSize.X,
-						verticalAlignment == Enum.VerticalAlignment.Top
-						and (spanData.spanPosition.Y + spanData.spanSize.Y / 2) / obj._container.AbsoluteSize.Y
-						or verticalAlignment == Enum.VerticalAlignment.Center
-						and .5 + ((
-							spanData.spanPosition.Y - spanData.spanSize.Y / 2
-						) / obj._container.AbsoluteSize.Y)
-						or 1 - (spanData.spanPosition.Y / obj._container.AbsoluteSize.Y)
-					)
-
-					flipbookEffect.applyFlipbookEffect(
-						image,
-						markups.attributes,
-						updater
-					)
+						image.Position = UDim2.fromScale(
+							(spanData.spanPosition.X + spanData.spanSize.X / 2) / obj._container.AbsoluteSize.X,
+							verticalAlignment == Enum.VerticalAlignment.Top
+							and (spanData.spanPosition.Y + spanData.spanSize.Y / 2) / obj._container.AbsoluteSize.Y
+							or verticalAlignment == Enum.VerticalAlignment.Center
+							and .5 + ((
+								spanData.spanPosition.Y - spanData.spanSize.Y / 2
+							) / obj._container.AbsoluteSize.Y)
+							or 1 - (spanData.spanPosition.Y / obj._container.AbsoluteSize.Y)
+						)
+	
+						flipbookEffect.applyFlipbookEffect(
+							image,
+							markups.attributes,
+							updater
+						)
+					end
+					
+					index += 1
 				end
 			end
-
-			index += 1
 		end
 	end,
 	convert = util.stringToURI,
