@@ -2027,9 +2027,11 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 												and PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID
 												or nil
 										)
-										self._constructionScheduler:Append(function()
-											self:_AppendSelfClosingMarkupToSpans(tagEndPos)
-										end)
+										if dataModule.appendToCurrentWord then
+											self._constructionScheduler:Append(function()
+												self:_AppendSelfClosingMarkupToSpans(tagEndPos)
+											end)
+										end
 									else
 										warn(
 											"Failed to parse tag \""
