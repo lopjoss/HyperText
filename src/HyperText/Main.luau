@@ -551,32 +551,10 @@ methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
 								
 								latestEndTime = latestEndTime and math.max(latestEndTime, endTime) or endTime
 								
-								local spans = util.indexCaseInsensitive(
-									self._constructionData.spans,
-									dataModule.name
-								)
-								local span : types.spanData
-
-								for _, candidate in ipairs(spans) do
-									if table.find(candidate.rowEntryIndices, entry.index) then
-										span = candidate
-
-										break
-									end
-								end									
-								
-								local spanData : types.onPrintMarkupSpanData = {
-									rowEntryIndices = span.rowEntryIndices,
-									characterSize = Vector2.new(entry.constructionDataRowEntry.width, entry.constructionDataRowEntry.height),
-									characterPosition = self:_GetRowEntryPosition(entry.index),
-									spanSize = span.size,
-									spanPosition = span.position,
-								}
-
-								dataModule.onPrint(
+								util.fireDataModuleOnPrint(
 									self,
+									dataModule,
 									entry,
-									spanData,
 									updater,
 									true
 								)

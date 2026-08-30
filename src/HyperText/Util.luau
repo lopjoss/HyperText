@@ -108,6 +108,51 @@ util.getEmptyMarkups = function() : types.markups
 	return markups
 end
 
+util.fireDataModuleOnPrint = function(
+	obj : types.hyperTextClassObject,
+	dataModule : types.dataModuleBase & types.pairedDescriminator,
+	printerRowEntry : types.printerDataRowEntry,
+	updater : {[string] : (dt : number) -> ()},
+	onClear : boolean?
+)
+	if dataModule.onPrint then
+		local constructionData = printerRowEntry.constructionDataRowEntry
+		local characterPosition = obj:_GetRowEntryPosition(printerRowEntry.index)
+		local spans = util.indexCaseInsensitive(
+			obj._constructionData.spans,
+			dataModule.name
+		)
+		local onPrintSpanData : {types.onPrintMarkupSpanData} = {}
+
+		for _, span in ipairs(spans) do
+			if table.find(span.rowEntryIndices, printerRowEntry.index) then
+				table.insert(onPrintSpanData,{
+					rowEntryIndices = span.rowEntryIndices,
+					characterSize = Vector2.new(
+						constructionData.width,
+						constructionData.height
+					),
+					characterPosition = characterPosition,
+					spanSize = span.size,
+					spanPosition = span.position,
+				})
+				
+				if not dataModule.stackable then
+					break
+				end
+			end
+		end
+
+		dataModule.onPrint(
+			obj,
+			printerRowEntry,
+			dataModule.stackable and onPrintSpanData or onPrintSpanData[1],
+			updater,
+			onClear
+		)
+	end
+end
+
 util.fireAllDataModuleOnPrints = function(
 	obj : types.hyperTextClassObject,
 	printerRowEntry : types.printerDataRowEntry,
@@ -116,8 +161,6 @@ util.fireAllDataModuleOnPrints = function(
 	validate : ((dataModule : types.dataModuleLoose) -> boolean)?
 )
 	local dataModules = util.getAllMarkupDataModules(exclude)
-	local constructionData = printerRowEntry.constructionDataRowEntry
-	local characterPosition = obj:_GetRowEntryPosition(printerRowEntry.index)
 
 	for dataModule in util.iterateMarkupDataModulesByPrintPriority(dataModules) do
 		if 
@@ -125,38 +168,7 @@ util.fireAllDataModuleOnPrints = function(
 			and dataModule.onPrint
 			and (not validate or validate(dataModule))
 		then
-			local spans = util.indexCaseInsensitive(
-				obj._constructionData.spans,
-				dataModule.name
-			)
-			local onPrintSpanData : {types.onPrintMarkupSpanData} = {}
-
-			for _, span in ipairs(spans) do
-				if table.find(span.rowEntryIndices, printerRowEntry.index) then
-					table.insert(onPrintSpanData,{
-						rowEntryIndices = span.rowEntryIndices,
-						characterSize = Vector2.new(
-							constructionData.width,
-							constructionData.height
-						),
-						characterPosition = characterPosition,
-						spanSize = span.size,
-						spanPosition = span.position,
-					})
-					
-					if not dataModule.stackable then
-						break
-					end
-				end
-			end
-
-			dataModule.onPrint(
-				obj,
-				printerRowEntry,
-				dataModule.stackable and onPrintSpanData or onPrintSpanData[1],
-				updater,
-				false
-			)
+			util.fireDataModuleOnPrint(obj, dataModule, printerRowEntry, updater)
 		end
 	end
 end

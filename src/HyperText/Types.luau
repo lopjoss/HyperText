@@ -442,44 +442,47 @@ type nonProgrammaticMarkupBase = {
 	convert : (value : string) -> any,
 	onConstruction : createDataModuleOnConstruction<hyperTextClassObject, markups>,
 }
-export type dataModuleLoose = {
+export type pairedDescriminator = {
+	type : "paired",
+	unrequired : boolean?,
+	applyToImages : boolean?,
+	alwaysApplyToImages : boolean?,
+	applyOnClear : boolean?,
+	stackable : boolean?,
+	onPrint : createDataModuleOnPrint<
+		unknown,
+		boolean?,
+	
+		markups,
+		hyperTextClassObject,
+		onPrintMarkupSpanData | {onPrintMarkupSpanData},
+		Frame,
+		GuiObject,
+		Vector2,
+		TextLabel,
+		ImageLabel
+	>,
+	getClearingDuration : createDataModuleGetClearingDuration<markups>,
+	validate : createDataModuleValidate<markups>
+}
+type selfClosingDescriminator = {
+	type : "selfClosing",
+	appendToCurrentWord : boolean?,
+	yieldFromIntervalOnPrint : boolean?,
+	onPrint_ : createSelfClosingMarkupDataModuleOnPrint<hyperTextClassObject, markups, Frame>?,
+	getSize : createDataModuleGetSize<hyperTextClassObject, markups, Vector2>?,
+}
+export type dataModuleBase = {
 	name : string,
 	type : dataModuleType,
 	validateDefaultValue : ((value : any) -> ())?,
 	onDefaultMarkupsChanged : ((markups : markups) -> ())?,
 	attributes : dataModuleLooseAttrs,
 	valueAttributes : dataModuleLooseValueAttrs,
-} & (
-	({
-		type : "paired",
-		unrequired : boolean?,
-		applyToImages : boolean?,
-		alwaysApplyToImages : boolean?,
-		applyOnClear : boolean?,
-		stackable : boolean?,
-		onPrint : createDataModuleOnPrint<
-			unknown,
-			boolean?,
-		
-			markups,
-			hyperTextClassObject,
-			onPrintMarkupSpanData | {onPrintMarkupSpanData},
-			Frame,
-			GuiObject,
-			Vector2,
-			TextLabel,
-			ImageLabel
-		>,
-		getClearingDuration : createDataModuleGetClearingDuration<markups>,
-		validate : createDataModuleValidate<markups>
-	} & nonProgrammaticMarkupBase)
-	| ({
-		type : "selfClosing",
-		appendToCurrentWord : boolean?,
-		yieldFromIntervalOnPrint : boolean?,
-		onPrint_ : createSelfClosingMarkupDataModuleOnPrint<hyperTextClassObject, markups, Frame>?,
-		getSize : createDataModuleGetSize<hyperTextClassObject, markups, Vector2>?,
-	} & nonProgrammaticMarkupBase)
+}
+export type dataModuleLoose = dataModuleBase & (
+	(pairedDescriminator & nonProgrammaticMarkupBase)
+	| (selfClosingDescriminator & nonProgrammaticMarkupBase)
 	| {
 		type : "programmatic",
 	}
