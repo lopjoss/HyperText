@@ -337,6 +337,9 @@ type function createDataModule(
 	local applyToImagesType = applyToImages:value()
 		and types.singleton(true)
 		or types.optional(types.singleton(false))
+	local alwaysApplyToImagesType = applyToImages:value()
+		and types.optional(types.boolean)
+		or types.singleton(nil)
 	local applyOnClearType = applyOnClear:value()
 		and types.singleton(true)
 		or types.optional(types.singleton(false))
@@ -356,6 +359,7 @@ type function createDataModule(
 		),
 		[types.singleton("appendToCurrentWord")] = appendToCurrentWord,
 		[types.singleton("applyToImages")] = applyToImagesType,
+		[types.singleton("alwaysApplyToImages")] = alwaysApplyToImagesType,
 		[types.singleton("applyOnClear")] = applyOnClearType,
 		[types.singleton("attributes")] = createAttrConverters(attrs),
 		[types.singleton("valueAttributes")] = createValueAttrConverters(valueAttrs),
@@ -450,6 +454,7 @@ export type dataModuleLoose = {
 		type : "paired",
 		unrequired : boolean?,
 		applyToImages : boolean?,
+		alwaysApplyToImages : boolean?,
 		applyOnClear : boolean?,
 		stackable : boolean?,
 		onPrint : createDataModuleOnPrint<
