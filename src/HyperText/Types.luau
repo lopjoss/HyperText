@@ -462,8 +462,8 @@ export type pairedDescriminator = {
 		TextLabel,
 		ImageLabel
 	>,
-	getClearingDuration : createDataModuleGetClearingDuration<markups>,
-	validate : createDataModuleValidate<markups>
+	getClearingDuration : createDataModuleGetClearingDuration<markups>?,
+	validate : createDataModuleValidate<markups>?
 }
 type selfClosingDescriminator = {
 	type : "selfClosing",

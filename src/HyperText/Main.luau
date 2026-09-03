@@ -540,8 +540,13 @@ methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
 					end
 					
 					for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
-						if dataModule.type == "paired" and dataModule.applyOnClear then
-							if dataModule.onPrint and dataModule.validate(entry.markups) then
+						if 
+							dataModule.type == "paired"
+							and dataModule.applyOnClear
+							and dataModule.validate
+							and dataModule.getClearingDuration
+						then
+							if dataModule.validate(entry.markups) then
 								if entry.character:IsA("ImageLabel") and not dataModule.applyToImages then
 									continue
 								end
