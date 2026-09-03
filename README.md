@@ -58,6 +58,7 @@ General behavior:
 - Stackable paired markup values cannot be removed with `/`; use the closing tag to end an active stack entry.
 - Self-closing markup values do not support `/` because each tag represents a single occurrence rather than persistent markup state.
 - When updating default markups, use `HyperText.DELETE` instead of `/`. To remove a stackable default entry, assign it to the corresponding stack index.
+- Aspect-ratio-preserving scaling on the container is supported, independent axis resizing is not
 - Destroying the container automatically destroys its HyperText object.
 
 > Very small text or certain fonts may occasionally position a character one pixel unevenly because fractional positions and sizes ultimately have to be rasterized onto the pixel grid. There is no fixing this.
@@ -936,6 +937,7 @@ local module : types.dataModule<
 	type = type_, -- Must match the paired markup type.
 	stackable = true, -- Required when the markup schema uses stack<...>.
 	applyToImages = applyToImages, -- Allows onPrint to receive inline images.
+	alwaysApplyToImages = false, -- Set to true to also receive inline images with plain=true.
 	applyOnClear = applyOnClear, -- Allows onPrint to run during clearing.
 
 	convert = function(value : string) : "glow" | "blink" -- Converts the raw tag value to its schema type.
@@ -1008,7 +1010,7 @@ local module : types.dataModule<
 	onPrint = function( -- Runs for every relevant printed entry.
 		obj : types.hyperTextClassObject, -- HyperText object printing the render.
 		printerData : types.printerDataRowEntry, -- Current character or image and its markup state.
-		spanData : types.onPrintMarkupSpanData, -- Geometry of the character and markup span.
+		spanData : {types.onPrintMarkupSpanData}, -- Geometry of the character and each active stack entry's markup span. If the markup is not stackable, this should not be an array.
 		updater : {[string] : (dt : number) -> ()}, -- Shared per-frame callback dictionary.
 		onClear : boolean -- Whether the markup is running during clearing.
 	)
