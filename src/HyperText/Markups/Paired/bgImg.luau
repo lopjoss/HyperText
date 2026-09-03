@@ -90,12 +90,16 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 						local widthMul = markups.attributes.widthMul or 1
 						local heightMul = markups.attributes.heightMul or 1
 						local verticalAlignment = printerData.markups.verticalAlignment.value
+						local containerSize = obj._container.AbsoluteSize
+						local contentHeight = (obj:GetConstructionSize() or Vector2.zero).Y
+						local verticalOffset = verticalAlignment == Enum.VerticalAlignment.Top
+							and 0
+							or verticalAlignment == Enum.VerticalAlignment.Center
+							and (containerSize.Y - contentHeight) / 2
+							or containerSize.Y - contentHeight
 	
 						local image = Instance.new("ImageLabel", parent)
-						image.AnchorPoint = Vector2.new(
-							.5,
-							verticalAlignment == Enum.VerticalAlignment.Bottom and 0 or .5
-						)
+						image.AnchorPoint = Vector2.new(.5, .5)
 						image.Name = "Image_" .. imageURI
 						image.BackgroundTransparency = 1
 						image.Image = imageURI
@@ -108,24 +112,22 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
 							)
-									and spanData.spanSize.X / obj._container.AbsoluteSize.X
-								or spanData.spanSize.X / obj._container.AbsoluteSize.Y) * widthMul,
+									and spanData.spanSize.X / containerSize.X
+								or spanData.spanSize.X / containerSize.Y) * widthMul,
 							((
 								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
 							)
-									and spanData.spanSize.Y / obj._container.AbsoluteSize.Y
-								or spanData.spanSize.Y / obj._container.AbsoluteSize.X) * heightMul
+									and spanData.spanSize.Y / containerSize.Y
+								or spanData.spanSize.Y / containerSize.X) * heightMul
 						)
 						image.Position = UDim2.fromScale(
-							(spanData.spanPosition.X + spanData.spanSize.X / 2) / obj._container.AbsoluteSize.X,
-							verticalAlignment == Enum.VerticalAlignment.Top
-							and (spanData.spanPosition.Y + spanData.spanSize.Y / 2) / obj._container.AbsoluteSize.Y
-							or verticalAlignment == Enum.VerticalAlignment.Center
-							and .5 + ((
-								spanData.spanPosition.Y - spanData.spanSize.Y / 2
-							) / obj._container.AbsoluteSize.Y)
-							or 1 - (spanData.spanPosition.Y / obj._container.AbsoluteSize.Y)
+							(spanData.spanPosition.X + spanData.spanSize.X / 2) / containerSize.X,
+							(
+								verticalOffset
+								+ spanData.spanPosition.Y
+								+ spanData.spanSize.Y / 2
+							) / containerSize.Y
 						)
 	
 						flipbookEffect.applyFlipbookEffect(
