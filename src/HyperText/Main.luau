@@ -346,7 +346,7 @@ methods.Render = function(
 							if not dataModule.stackable then
 								self:_CreateSpan(dataModule.name)
 							else
-								local defaultStack = (self._markups :: {[string] : types.stack<types.markupIndexable>})[dataModule.name].stack
+								local defaultStack = (self._constructionMarkups :: {[string] : types.stack<types.markupIndexable>})[dataModule.name].stack
 
 								for i, markups in pairs(defaultStack) do
 									self:_CreateSpan(dataModule.name, i)
@@ -387,15 +387,29 @@ methods.Render = function(
 							local currentWord = self._currentWord		
 
 							if currentWord then
-								local firstEntry = currentWord[1]
+								local index = 0
+								
+								repeat
+									index += 1
 
-								if firstEntry.word then
-									local first = utf8.graphemes(firstEntry.word.str)()
+									local firstEntry = currentWord[index]
 
-									self._firstRowEntryIndex = firstEntry.word.index + first - 1
-								elseif firstEntry.selfClosingMarkup then
-									self._firstRowEntryIndex = firstEntry.selfClosingMarkup.index
-								end
+									if firstEntry.word then
+										local first = utf8.graphemes(firstEntry.word.str)()
+
+										self._firstRowEntryIndex = firstEntry.word.index + first - 1
+									elseif firstEntry.selfClosingMarkup then
+										for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+											if dataModule.name == firstEntry.selfClosingMarkup.type_ then
+												if dataModule.type == "selfClosing" and dataModule.yieldFromIntervalOnPrint then
+													self._firstRowEntryIndex = firstEntry.selfClosingMarkup.index
+												end
+
+												break
+											end
+										end
+									end
+								until self._firstRowEntryIndex or index > #currentWord
 
 								self._currentWord = nil
 							end
@@ -524,6 +538,8 @@ methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
 
 		if not instant then
 			if self._clearingRender then
+				warn("Render is already being cleared, ignoring Clear() call")
+
 				return
 			end
 			
@@ -664,9 +680,10 @@ end
 
 methods._GetProportionalSize = function(self : types.hyperTextClassObject, size : number) : (number, number)
 	local containerDefaultAbsoluteSize = self._containerDefaultAbsoluteSize
+	local constructionMarkups = self._constructionMarkups
 	
-	if containerDefaultAbsoluteSize then
-		local scale = self._markups.scaleDimension.value == "X"
+	if containerDefaultAbsoluteSize and constructionMarkups then
+		local scale = constructionMarkups.scaleDimension.value == "X"
 			and (self._container.AbsoluteSize.X / containerDefaultAbsoluteSize.X)
 			or (self._container.AbsoluteSize.Y / containerDefaultAbsoluteSize.Y)
 		
@@ -678,23 +695,28 @@ methods._GetProportionalSize = function(self : types.hyperTextClassObject, size 
 end
 
 methods._CreateRow = function(self : types.hyperTextClassObject, markups : types.markups?)
-	table.insert(self._constructionData.rows, {
-		height = markups and markups.size.value or 0,
-		width = 0,
-	})
+	local constructionMarkups = self._constructionMarkups
+
+	if constructionMarkups then
+		table.insert(self._constructionData.rows, {
+			height = markups and markups.size.value or constructionMarkups.size.value,
+			width = 0,
+		})
+	end
 end
 
 methods._OverflowCheck = function(self : types.hyperTextClassObject)
 	local size = self:GetConstructionSize()
 	local text = self._text
 	local renderTraceback = self._renderTraceback
+	local constructionMarkups = self._constructionMarkups
 	
-	if size and text and renderTraceback then
+	if size and text and renderTraceback and constructionMarkups then
 		if 
 			size.X > self._container.AbsoluteSize.X
 			and not (
-				self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
-					and self._markups.scaleDimension.value == "Y"
+				constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+					and constructionMarkups.scaleDimension.value == "Y"
 					and self._container.AutomaticSize == Enum.AutomaticSize.X
 			)
 		then
@@ -709,8 +731,8 @@ methods._OverflowCheck = function(self : types.hyperTextClassObject)
 		if 
 			size.Y > self._container.AbsoluteSize.Y
 			and not (
-				self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
-					and self._markups.scaleDimension.value == "X"
+				constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+					and constructionMarkups.scaleDimension.value == "X"
 					and self._container.AutomaticSize == Enum.AutomaticSize.Y
 			)
 		then
@@ -730,33 +752,38 @@ methods._CreateRowInstance = function(
 	index : number
 ) : Frame
 	local proportionalHeight = self:_GetProportionalSize(height)
+	local constructionMarkups = self._constructionMarkups
 	
-	local row = Instance.new("Frame", self._contentFolder)
-	row.SizeConstraint = self._markups.sizeConstraint.value
-	row.Size = UDim2.fromScale(
-		(
-			self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
-			or self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
-		) 
-			and 1
-			or self._container.AbsoluteSize.X / self._container.AbsoluteSize.Y,
-		self._markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX 
-			and proportionalHeight / self._container.AbsoluteSize.X
-			or proportionalHeight / self._container.AbsoluteSize.Y
-	)
-	row.BackgroundTransparency = 1
-	row.ZIndex = self._markups.ZIndex.value
-
-	local digits = #tostring(#self._constructionData.rows)
-	row.Name = string.format("Row%0" .. digits .. "d", index)
+	if constructionMarkups then
+		local row = Instance.new("Frame", self._contentFolder)
+		row.SizeConstraint = constructionMarkups.sizeConstraint.value
+		row.Size = UDim2.fromScale(
+			(
+				constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+				or constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+			) 
+				and 1
+				or self._container.AbsoluteSize.X / self._container.AbsoluteSize.Y,
+			constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX 
+				and proportionalHeight / self._container.AbsoluteSize.X
+				or proportionalHeight / self._container.AbsoluteSize.Y
+		)
+		row.BackgroundTransparency = 1
+		row.ZIndex = constructionMarkups.ZIndex.value
 	
-	local layout = Instance.new("UIListLayout", row)
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.HorizontalAlignment = self._markups.horizontalAlignment.value
+		local digits = #tostring(#self._constructionData.rows)
+		row.Name = string.format("Row%0" .. digits .. "d", index)
+		
+		local layout = Instance.new("UIListLayout", row)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.VerticalAlignment = Enum.VerticalAlignment.Center
+		layout.HorizontalAlignment = constructionMarkups.horizontalAlignment.value
+	
+		return row
+	end
 
-	return row
+	error("No construction markups found")
 end
 
 methods._CreateRowEntryContainer = function(
@@ -1447,87 +1474,90 @@ end
 
 methods._MapConstructionData = function(self : types.hyperTextClassObject)
 	local rows : types.mappedConstructionData = {}
+	local constructionMarkups = self._constructionMarkups
 	
-	for i, entry in pairs(self._constructionData.rowEntries) do
-		if not rows[entry.rowIndex] then
-			local rowData = self._constructionData.rows[entry.rowIndex]
-			local positionY = 0
-			
-			for rowIndex, row in ipairs(self._constructionData.rows) do
-				if rowIndex < entry.rowIndex then
-					positionY += row.height
-				else
-					break
+	if constructionMarkups then
+		for i, entry in pairs(self._constructionData.rowEntries) do
+			if not rows[entry.rowIndex] then
+				local rowData = self._constructionData.rows[entry.rowIndex]
+				local positionY = 0
+				
+				for rowIndex, row in ipairs(self._constructionData.rows) do
+					if rowIndex < entry.rowIndex then
+						positionY += row.height
+					else
+						break
+					end
 				end
-			end
-
-			rows[entry.rowIndex] = {
-				height = rowData.height,
-				rowEntries = {},
-				positionY = positionY,
-				width = rowData.width,
-				rowEntryIndices = {},
-			}
-		end
-		
-		table.insert(rows[entry.rowIndex].rowEntries, {
-			str = entry.str,
-			width = entry.width,
-			height = entry.height,
-			rowIndex = entry.rowIndex,
-			index = i,
-			positionX = 0,
-		})
-		table.insert(rows[entry.rowIndex].rowEntryIndices, i)
-	end
 	
-	for rowIndex, row in pairs(rows) do
-		local offsetX = 0
-		
-		table.sort(row.rowEntries, function(
-			a : index<typeof(row.rowEntries), number>,
-			b : index<typeof(row.rowEntries), number>
-		)
-			return a.index < b.index
-		end)
-		
-		for 
-			i = (
-				self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
-					and #row.rowEntries
-					or 1
-			),
-			(
-				self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right 
-					and 1
-					or #row.rowEntries
-			),
-			(
-				self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
-					and -1
-					or 1
-			)
-		do
-			local entry = row.rowEntries[i]
-
-			local positionX = self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Left
-				and offsetX
-				or self._markups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
-				and self._container.AbsoluteSize.X - offsetX - entry.width
-				or row.width > 0 
-				and (
-					offsetX > 0
-					and (offsetX / row.width - .5) * row.width + self._container.AbsoluteSize.X / 2
-					or self._container.AbsoluteSize.X / 2 - row.width / 2
-				)
-				or self._container.AbsoluteSize.X / 2
-
-			entry.positionX = positionX
-			offsetX += entry.width
+				rows[entry.rowIndex] = {
+					height = rowData.height,
+					rowEntries = {},
+					positionY = positionY,
+					width = rowData.width,
+					rowEntryIndices = {},
+				}
+			end
+			
+			table.insert(rows[entry.rowIndex].rowEntries, {
+				str = entry.str,
+				width = entry.width,
+				height = entry.height,
+				rowIndex = entry.rowIndex,
+				index = i,
+				positionX = 0,
+			})
+			table.insert(rows[entry.rowIndex].rowEntryIndices, i)
 		end
+		
+		for rowIndex, row in pairs(rows) do
+			local offsetX = 0
+			
+			table.sort(row.rowEntries, function(
+				a : index<typeof(row.rowEntries), number>,
+				b : index<typeof(row.rowEntries), number>
+			)
+				return a.index < b.index
+			end)
+			
+			for 
+				i = (
+					constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
+						and #row.rowEntries
+						or 1
+				),
+				(
+					constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Right 
+						and 1
+						or #row.rowEntries
+				),
+				(
+					constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
+						and -1
+						or 1
+				)
+			do
+				local entry = row.rowEntries[i]
+	
+				local positionX = constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Left
+					and offsetX
+					or constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
+					and self._container.AbsoluteSize.X - offsetX - entry.width
+					or row.width > 0 
+					and (
+						offsetX > 0
+						and (offsetX / row.width - .5) * row.width + self._container.AbsoluteSize.X / 2
+						or self._container.AbsoluteSize.X / 2 - row.width / 2
+					)
+					or self._container.AbsoluteSize.X / 2
+	
+				entry.positionX = positionX
+				offsetX += entry.width
+			end
+		end
+	
+		self._mappedConstructionData = rows
 	end
-
-	self._mappedConstructionData = rows
 end
 
 methods._InitSpanData = function(self : types.hyperTextClassObject)
@@ -1852,7 +1882,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 		
 		for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
 			if dataModule.type == "paired" and dataModule.stackable then
-				local stackableMarkups = self._markups :: {[string] : types.stack<types.markupIndexable>}
+				local stackableMarkups = self._constructionMarkups :: {[string] : types.stack<types.markupIndexable>}
 				local defaultStack = (stackableMarkups)[dataModule.name].stack
 
 				markupStackEntries[dataModule.name] = 0

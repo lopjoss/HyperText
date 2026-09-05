@@ -3,7 +3,7 @@
 	- classes
 	- bidirectional support
 	- applyToWhitespace field in markup datamodule
-	- semi redesign core to remove extreme hot paths
+	- remove extreme hot paths
 ]]
 
 --[[	v4.2.0		9-8-2026
@@ -25,6 +25,9 @@
 		fixed plain images being inserted at the start of a new row
 		fixed wiggle anim rotation not being uniform across different scales
 		fixed attributes which are set to false not being able to be set to nil
+		fixed a leading br markup not creating a line break
+		fixed a leading invisible self closing markup make the first visible character yield
+		fixed shadow not resizing correctly during character scaling
 
 ]]
 
