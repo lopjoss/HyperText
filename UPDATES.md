@@ -24,6 +24,7 @@
 	FIXES:
 		fixed plain images being inserted at the start of a new row
 		fixed wiggle anim rotation not being uniform across different scales
+		fixed attributes which are set to false not being able to be set to nil
 
 ]]
 

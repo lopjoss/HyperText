@@ -476,7 +476,7 @@ util.updateMarkups = function(
 					value = attrPreviousValue,
 				})
 
-				if attrPreviousValue then
+				if attrPreviousValue ~= nil then
 					util.setCaseInsensitive(attrs, data.attr, data.value)
 				elseif data.value ~= nil then
 					attrs[data.schemaAttr] = data.value
@@ -492,7 +492,7 @@ util.updateMarkups = function(
 					markupValue = data.markupValue,
 				})
 
-				if previousValue then
+				if previousValue ~= nil then
 					util.setCaseInsensitive(valueAttrs, data.attr, data.value)
 				elseif data.value ~= nil then
 					valueAttrs[data.schemaAttr] = data.value
@@ -501,7 +501,7 @@ util.updateMarkups = function(
 		end
 	end
 
-	return previousValue, previousAttrsValues, not revertStack
+	return previousValue, previousAttrsValues
 end
 
 type textBoundsCacheSchema = {
