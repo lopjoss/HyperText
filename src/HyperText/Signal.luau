@@ -2,7 +2,7 @@
 --!optimize 2
 
 -- signal implementation by @lopjoss
--- v1.0.2
+-- v1.1.0
 
 local module = {}
 
@@ -318,18 +318,18 @@ end
 	creates and returns a new signal that wraps the provided RBXScriptSignal
 	avoid anonymous chaining because destroying the final signal does not disconnect this wrapper, thus leaking memory
 ]]
-module.wrap = function(RBXSignal : RBXScriptSignal) : classType<>
-	local content : classContent<> = {
+module.wrap = function<P...>(RBXSignal : RBXScriptSignal<P...>) : classType<P...>
+	local content : classContent<P...> = {
 		_connectionCount = 0,
 	}
 
 	local self = setmetatable(
 		content,
 		signalMT
-	) :: classType<>
+	) :: classType<P...>
 	
-	local connection = RBXSignal:Connect(function()
-		self:_FireImp("sync")
+	local connection = RBXSignal:Connect(function(...)
+		self:_FireImp("sync", ...)
 	end)
 	
 	self._sourceRBXConnection = connection
