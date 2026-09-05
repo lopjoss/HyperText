@@ -511,6 +511,7 @@ export type dataModule<
 >
 
 export type onPrintMarkupSpanData = {
+	stackIndex : number?,
 	rowEntryIndices : {number},
 	characterPosition : Vector2,
 	characterSize : Vector2,
@@ -518,6 +519,7 @@ export type onPrintMarkupSpanData = {
 	spanSize : Vector2
 }
 export type spanData = {
+	stackIndex : number?,
 	rowEntryIndices : {number},
 	closed : boolean?,
 	position : Vector2,
@@ -833,7 +835,11 @@ export type hyperTextClassMethods = {
 		self : hyperTextClassObject,
 		index : number
 	) -> Vector2,
-	_CreateSpan : (self : hyperTextClassObject, type_ : string) -> (),
+	_CreateSpan : (
+		self : hyperTextClassObject,
+		type_ : string,
+		stackIndex : number?
+	) -> (),
 	_CloseLastSpan : (self : hyperTextClassObject, type_ : string) -> (),
 	_ParseAttrs : (
 		self : hyperTextClassObject,

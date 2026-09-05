@@ -117,6 +117,7 @@ util.fireDataModuleOnPrint = function(
 )
 	if dataModule.onPrint then
 		local constructionData = printerRowEntry.constructionDataRowEntry
+		-- TODO: should remove this hot path
 		local characterPosition = obj:_GetRowEntryPosition(printerRowEntry.index)
 		local spans = util.indexCaseInsensitive(
 			obj._constructionData.spans,
@@ -125,8 +126,10 @@ util.fireDataModuleOnPrint = function(
 		local onPrintSpanData : {types.onPrintMarkupSpanData} = {}
 
 		for _, span in ipairs(spans) do
+			-- TODO: should make this indexable
 			if table.find(span.rowEntryIndices, printerRowEntry.index) then
-				table.insert(onPrintSpanData,{
+				table.insert(onPrintSpanData, {
+					stackIndex = span.stackIndex,
 					rowEntryIndices = span.rowEntryIndices,
 					characterSize = Vector2.new(
 						constructionData.width,

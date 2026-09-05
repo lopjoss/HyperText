@@ -338,8 +338,8 @@ methods.Render = function(
 							else
 								local defaultStack = (self._markups :: {[string] : types.stack<types.markupIndexable>})[dataModule.name].stack
 
-								for _, markups in pairs(defaultStack) do
-									self:_CreateSpan(dataModule.name)
+								for i, markups in pairs(defaultStack) do
+									self:_CreateSpan(dataModule.name, i)
 								end
 							end
 						end
@@ -1633,10 +1633,15 @@ methods._GetRowEntryPosition = function(
 	error("row entry index not found in construction data", 0)
 end
 
-methods._CreateSpan = function(self : types.hyperTextClassObject, type_ : string)
+methods._CreateSpan = function(
+	self : types.hyperTextClassObject,
+	type_ : string,
+	stackIndex : number?
+)
 	local span = util.indexCaseInsensitive(self._constructionData.spans, type_)
 	
 	table.insert(span, {
+		stackIndex = stackIndex,
 		rowEntryIndices = {},
 		position = Vector2.zero,
 		size = Vector2.zero,
@@ -1931,7 +1936,20 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 																)
 															end
 	
-															self:_CreateSpan(markupType)
+															if markupValue then
+																if dataModule.stackable then
+																	local _, stackIndex = util.getLastEntryFromStack(
+																		util.indexCaseInsensitive(
+																			self._constructionMarkups :: {[string] : types.stack<types.markupIndexable>},
+																			markupType
+																		).stack
+																	)
+
+																	self:_CreateSpan(markupType, stackIndex)
+																else
+																	self:_CreateSpan(markupType)
+																end
+															end
 														end
 													end)
 												else
