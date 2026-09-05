@@ -228,9 +228,8 @@ return function(
 							* phaseStep
 							* fade
 							* wiggle.amp
-							* printerData.character.AbsoluteSize.Y
+							* printerData.constructionDataRowEntry.height
 						
-						-- TODO: this might not rotate correctly when ui scales up
 						printerData.rotation += math.deg(math.atan2(slopeY, printerData.constructionDataRowEntry.width))
 					end
 				end
