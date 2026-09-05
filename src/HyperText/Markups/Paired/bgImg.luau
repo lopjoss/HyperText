@@ -61,11 +61,10 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		updater : {[string] : (dt : number) -> ()}
 	)
 		if obj._contentFolder then
-			local index = 1
-	
-			for _, markups in pairs(printerData.markups.bgImg.stack) do
+			for _, spanData in ipairs(spanData) do
+				local markups = printerData.markups.bgImg.stack[spanData.stackIndex :: number]
+
 				if markups then
-					local spanData = spanData[index]
 					local firstVisibleRowEntryIndex : number
 	
 					for _, index in ipairs(spanData.rowEntryIndices) do
@@ -140,8 +139,6 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 							updater
 						)
 					end
-					
-					index += 1
 				end
 			end
 		end
