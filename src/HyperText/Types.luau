@@ -650,6 +650,8 @@ export type hyperTextClassContent = {
 	onRenderEnded : signal.classType<boolean?>,
 	renderEvent : signal.classType<string>,
 
+	_automaticSizeX : boolean?,
+	_automaticSizeY : boolean?,
 	_constructing : boolean?,
 	_destroyed : boolean?,
 	_text : string?,

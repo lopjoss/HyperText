@@ -310,13 +310,23 @@ methods.Render = function(
 					for _, v in pairs(self._printerData :: {[string] : {any}}) do
 						table.clear(v)
 					end
+
+					local constructionMarkups = util.deepCopy(self._markups)
+					self._constructionMarkups = constructionMarkups
 					
+					if automaticSizeX then
+						constructionMarkups.horizontalAlignment.value = Enum.HorizontalAlignment.Left
+					end
+					if automaticSizeY then
+						constructionMarkups.verticalAlignment.value = Enum.VerticalAlignment.Top
+					end
+
 					local renderId = HttpService:GenerateGUID()
+					self._automaticSizeX = automaticSizeX
+					self._automaticSizeY = automaticSizeY
 					self._renderId = renderId
 					self._yieldingFromIntervalMarkup = false
 					self._text = text
-					local constructionMarkups = util.deepCopy(self._markups)
-					self._constructionMarkups = constructionMarkups
 					self._wrapped = wrapped
 					self._pausedRender = false
 					self._markupIndices = {}

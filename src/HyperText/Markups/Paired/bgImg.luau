@@ -90,8 +90,12 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 						local widthMul = markups.attributes.widthMul or 1
 						local heightMul = markups.attributes.heightMul or 1
 						local verticalAlignment = printerData.markups.verticalAlignment.value
-						local containerSize = obj._container.AbsoluteSize
-						local contentHeight = (obj:GetConstructionSize() or Vector2.zero).Y
+						local constructionSize = obj:GetConstructionSize() :: Vector2
+						local containerSize = Vector2.new(
+							obj._automaticSizeX and obj:_GetProportionalSize(constructionSize.X) or obj._container.AbsoluteSize.X,
+							obj._automaticSizeY and obj:_GetProportionalSize(constructionSize.Y) or obj._container.AbsoluteSize.Y
+						)
+						local contentHeight = constructionSize.Y
 						local verticalOffset = verticalAlignment == Enum.VerticalAlignment.Top
 							and 0
 							or verticalAlignment == Enum.VerticalAlignment.Center
