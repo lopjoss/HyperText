@@ -177,10 +177,14 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, typeof(applyOn
 			end
 			
 			if not onClear then
-				characterTextSizeConstraint:GetPropertyChangedSignal("MaxTextSize"):Connect(function()
+				local function syncShadowSize()
 					shadowTextSizeConstraint.MinTextSize = characterTextSizeConstraint.MinTextSize
 					shadowTextSizeConstraint.MaxTextSize = characterTextSizeConstraint.MaxTextSize
-				end)
+					shadow.TextSize = printerData.character.TextSize
+				end
+
+				characterTextSizeConstraint:GetPropertyChangedSignal("MinTextSize"):Connect(syncShadowSize)
+				printerData.character:GetPropertyChangedSignal("TextSize"):Connect(syncShadowSize)
 				printerData.character:GetPropertyChangedSignal("Text"):Connect(function()
 					shadow.Text = printerData.character.Text
 				end)
