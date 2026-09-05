@@ -386,12 +386,10 @@ methods.Render = function(
 
 							local currentWord = self._currentWord		
 
-							if currentWord then
-								local index = 0
+							if currentWord and #currentWord > 0 then
+								local index = 1
 								
 								repeat
-									index += 1
-
 									local firstEntry = currentWord[index]
 
 									if firstEntry.word then
@@ -400,7 +398,7 @@ methods.Render = function(
 										self._firstRowEntryIndex = firstEntry.word.index + first - 1
 									elseif firstEntry.selfClosingMarkup then
 										for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
-											if dataModule.name == firstEntry.selfClosingMarkup.type_ then
+											if string.lower(dataModule.name) == string.lower(firstEntry.selfClosingMarkup.type_) then
 												if dataModule.type == "selfClosing" and dataModule.yieldFromIntervalOnPrint then
 													self._firstRowEntryIndex = firstEntry.selfClosingMarkup.index
 												end
@@ -409,6 +407,8 @@ methods.Render = function(
 											end
 										end
 									end
+
+									index += 1
 								until self._firstRowEntryIndex or index > #currentWord
 
 								self._currentWord = nil
@@ -446,7 +446,7 @@ methods.Render = function(
 					local success, errmsg = coroutine.resume(executionThread)
 
 					if not success then
-						warn(errmsg :: string .. renderTraceback)
+						warn(errmsg :: string .. "\n" .. renderTraceback)
 					end
 
 					if yield then
@@ -1879,6 +1879,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 		local t = text
 		local markupStackEntries : {[string] : number} = {}
 		local markupHistory : {string} = {}
+		local closeLastSpanFor : {[string] : boolean} = {}
 		
 		for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
 			if dataModule.type == "paired" and dataModule.stackable then
@@ -1977,6 +1978,8 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 															end
 	
 															if markupValue then
+																closeLastSpanFor[string.lower(markupType)] = true
+
 																if dataModule.stackable then
 																	local _, stackIndex = util.getLastEntryFromStack(
 																		util.indexCaseInsensitive(
@@ -2124,7 +2127,12 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 											
 											self._constructionScheduler:Append(function()
 												self:_RemoveMarkup(markupType, dataModule.stackable)
-												self:_CloseLastSpan(markupType)
+
+												if closeLastSpanFor[string.lower(markupType)] then
+													closeLastSpanFor[string.lower(markupType)] = nil
+													
+													self:_CloseLastSpan(markupType)
+												end
 											end)
 
 											break
