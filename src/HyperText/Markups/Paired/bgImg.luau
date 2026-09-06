@@ -98,7 +98,7 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 							obj._automaticSizeX and obj:_GetProportionalSize(constructionSize.X) or obj._container.AbsoluteSize.X,
 							obj._automaticSizeY and obj:_GetProportionalSize(constructionSize.Y) or obj._container.AbsoluteSize.Y
 						)
-						local contentHeight = constructionSize.Y
+						local contentHeight = obj:_GetProportionalSize(constructionSize.Y)
 						local verticalOffset = verticalAlignment == Enum.VerticalAlignment.Top
 							and 0
 							or verticalAlignment == Enum.VerticalAlignment.Center
