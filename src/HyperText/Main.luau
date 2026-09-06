@@ -516,9 +516,9 @@ methods.ResumeRender = function(
 end
 
 methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
-	local contentFolder = self._contentFolder
+	local rendering = self.rendering
 
-	if contentFolder then
+	if rendering then
 		if self._executionThread then
 			task.cancel(self._executionThread)	
 		end
@@ -605,7 +605,9 @@ methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
 			end
 		end
 		
-		contentFolder:Destroy()
+		if self._contentFolder then
+			self._contentFolder:Destroy()
+		end
 		
 		table.clear(self._transformRowEntries)
 		
@@ -676,6 +678,7 @@ methods.Destroy = function(self : types.hyperTextClassObject)
 	updater[self._rowEntriesTransformUpdaterId] = nil
 	
 	self.onRenderEnded:Destroy()
+	self.renderEvent:Destroy()
 end
 
 methods._GetProportionalSize = function(self : types.hyperTextClassObject, size : number) : (number, number)
