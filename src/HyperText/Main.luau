@@ -516,9 +516,10 @@ methods.ResumeRender = function(
 end
 
 methods.Clear = function(self : types.hyperTextClassObject, instant : boolean?)
-	local rendering = self.rendering
+	local constructing = self._constructing
+	local contentFolder = self._contentFolder
 
-	if rendering then
+	if constructing or contentFolder then
 		if self._executionThread then
 			task.cancel(self._executionThread)	
 		end
