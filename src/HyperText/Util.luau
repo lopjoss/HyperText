@@ -567,30 +567,30 @@ util.fetchTextBounds = function(
 	return textBoundsCache:Get(fetschingSchema)
 end
 
-util.fullyCacheStackableImageMarkup = function(markup : types.stack<types.markupIndexable>)
+util.fullyCacheStackableImageMarkup = function(markup : types.stack<types.markupIndexable>, id : number?)
 	for _, v in ipairs({markup.stack, {markup._entryDefaultValues} :: {types.markupIndexable?}}) do
 		for _, markups in pairs(v) do
 			if markups then
-				util.cacheImageMarkup(markups)
+				util.cacheImageMarkup(markups, id)
 			end
 		end
 	end
 end
 
-util.cacheImageMarkup = function(markup : types.markupIndexable)
+util.cacheImageMarkup = function(markup : types.markupIndexable, id : number?)
 	if flipbookEffect.shouldApplyFlipbookEffect(markup.attributes) then
-		local imageURI = typeof(markup.value) == "string"
+		local imageURI = not id and typeof(markup.value) == "string"
 			and markup.value
-			or "rbxassetid://" .. markup.value
+			or "rbxassetid://" .. (id or markup.value)
 
 		flipbookEffect.cacheImageSize(imageURI)
 	end
 end
 
-util.cacheStackableImageMarkupLastEntry = function(stack : index<types.stack<types.markupIndexable>, "stack">)
+util.cacheStackableImageMarkupLastEntry = function(stack : index<types.stack<types.markupIndexable>, "stack">, id : number?)
 	local entry = util.getLastEntryFromStack(stack)
 
-	util.cacheImageMarkup(entry)
+	util.cacheImageMarkup(entry, id)
 end
 
 util.removeEntryFromTransformUpdater = function(

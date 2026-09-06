@@ -18,10 +18,16 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		util.cacheStackableImageMarkupLastEntry(markups.shiny.stack :: index<types.stack<types.markupIndexable>, "stack">)
+		util.cacheStackableImageMarkupLastEntry(
+			markups.shiny.stack :: index<types.stack<types.markupIndexable>, "stack">,
+			config.SHINY_IMG_ID
+		)
 	end,
 	onDefaultMarkupsChanged = function(markups : types.markups)
-		util.fullyCacheStackableImageMarkup(markups.shiny :: types.stack<types.markupIndexable>)
+		util.fullyCacheStackableImageMarkup(
+			markups.shiny :: types.stack<types.markupIndexable>,
+			config.SHINY_IMG_ID
+		)
 	end,
 	onPrint = function(
 		obj : types.hyperTextClassObject,

@@ -18,10 +18,16 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 		obj : types.hyperTextClassObject,
 		markups : types.markups
 	)
-		util.cacheStackableImageMarkupLastEntry(markups.fog.stack :: index<types.stack<types.markupIndexable>, "stack">)
+		util.cacheStackableImageMarkupLastEntry(
+			markups.fog.stack :: index<types.stack<types.markupIndexable>, "stack">,
+			config.FOG_IMG_ID
+		)
 	end,
 	onDefaultMarkupsChanged = function(markups : types.markups)
-		util.fullyCacheStackableImageMarkup(markups.fog :: types.stack<types.markupIndexable>)
+		util.fullyCacheStackableImageMarkup(
+			markups.fog :: types.stack<types.markupIndexable>,
+			config.FOG_IMG_ID
+		)
 	end,
 	onPrint = function(
 		obj : types.hyperTextClassObject,
