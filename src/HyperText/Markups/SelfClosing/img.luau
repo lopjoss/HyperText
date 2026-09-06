@@ -91,11 +91,11 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 			(
 				markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 					or markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
-			) and proportionalWidth or proportionalWidth,
+			) and proportionalWidth / row.AbsoluteSize.X or proportionalWidth / row.AbsoluteSize.Y,
 			(
 				markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 					or markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
-			) and proportionalHeight or proportionalHeight
+			) and proportionalHeight / row.AbsoluteSize.Y or proportionalHeight / row.AbsoluteSize.X
 		)
 		
 		local printerRowEntry : types.printerDataRowEntry = {
