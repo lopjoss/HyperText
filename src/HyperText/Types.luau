@@ -763,7 +763,7 @@ export type hyperTextClassMethods = {
 	),
 	GetConstructionSize : typeof(
 		--[[
-			Returns the final width and height of the last render.
+			Returns the width and height of the last render's construction. It's recommended to only use this on a yielding construction-only render to get the expected size of that render. Calling this immediately after a non yielding render might return an incomplete size because its construction hasn't finalized yet.
 		]]
 		function(
 			self : hyperTextClassObject
