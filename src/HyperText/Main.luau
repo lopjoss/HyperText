@@ -1,7 +1,7 @@
 --!strict
 
 --[[
-	HyperText v4.2.3
+	HyperText v4.2.0
 
 	Made by @lopjoss
 
@@ -355,10 +355,6 @@ methods.Render = function(
 						end
 					end
 					
-					local contentFolder = Instance.new("Folder", container)
-					contentFolder.Name = "HyperTextContent"
-					self._contentFolder = contentFolder
-					
 					local executionThread = coroutine.create(function()
 						self.rendering = true
 						self._constructing = true
@@ -379,6 +375,10 @@ methods.Render = function(
 						self._constructing = false
 
 						if success and not constructOnly then
+							local contentFolder = Instance.new("Folder", container)
+							contentFolder.Name = "HyperTextContent"
+							self._contentFolder = contentFolder
+
 							self._constructionScheduler:Iterate(nil, {
 								PARSER_APPEND_STRING_SCHEDULER_ID,
 								PARSER_APPEND_ROW_ENTRY_SCHEDULER_ID
@@ -688,7 +688,6 @@ methods._GetProportionalSize = function(self : types.hyperTextClassObject, size 
 			or (self._container.AbsoluteSize.Y / containerDefaultAbsoluteSize.Y)
 		
 		return size * scale, scale
-			
 	end
 	
 	return 0, 1
@@ -710,10 +709,17 @@ methods._OverflowCheck = function(self : types.hyperTextClassObject)
 	local text = self._text
 	local renderTraceback = self._renderTraceback
 	local constructionMarkups = self._constructionMarkups
+	local containerDefaultAbsoluteSize = self._containerDefaultAbsoluteSize
 	
-	if size and text and renderTraceback and constructionMarkups then
+	if
+		size
+		and text
+		and renderTraceback
+		and constructionMarkups
+		and containerDefaultAbsoluteSize
+	then
 		if 
-			size.X > self._container.AbsoluteSize.X
+			size.X > containerDefaultAbsoluteSize.X
 			and not (
 				constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
 					and constructionMarkups.scaleDimension.value == "Y"
@@ -729,7 +735,7 @@ methods._OverflowCheck = function(self : types.hyperTextClassObject)
 		end
 		
 		if 
-			size.Y > self._container.AbsoluteSize.Y
+			size.Y > containerDefaultAbsoluteSize.Y
 			and not (
 				constructionMarkups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
 					and constructionMarkups.scaleDimension.value == "X"
@@ -1474,9 +1480,10 @@ end
 
 methods._MapConstructionData = function(self : types.hyperTextClassObject)
 	local rows : types.mappedConstructionData = {}
+	local containerDefaultAbsoluteSize = self._containerDefaultAbsoluteSize
 	local constructionMarkups = self._constructionMarkups
 	
-	if constructionMarkups then
+	if constructionMarkups and containerDefaultAbsoluteSize then
 		for i, entry in pairs(self._constructionData.rowEntries) do
 			if not rows[entry.rowIndex] then
 				local rowData = self._constructionData.rows[entry.rowIndex]
@@ -1542,14 +1549,14 @@ methods._MapConstructionData = function(self : types.hyperTextClassObject)
 				local positionX = constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Left
 					and offsetX
 					or constructionMarkups.horizontalAlignment.value == Enum.HorizontalAlignment.Right
-					and self._container.AbsoluteSize.X - offsetX - entry.width
+					and containerDefaultAbsoluteSize.X - offsetX - entry.width
 					or row.width > 0 
 					and (
 						offsetX > 0
-						and (offsetX / row.width - .5) * row.width + self._container.AbsoluteSize.X / 2
-						or self._container.AbsoluteSize.X / 2 - row.width / 2
+						and (offsetX / row.width - .5) * row.width + containerDefaultAbsoluteSize.X / 2
+						or containerDefaultAbsoluteSize.X / 2 - row.width / 2
 					)
-					or self._container.AbsoluteSize.X / 2
+					or containerDefaultAbsoluteSize.X / 2
 	
 				entry.positionX = positionX
 				offsetX += entry.width
@@ -1938,7 +1945,9 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 							or nil
 						
 						for j, dataModule in ipairs(markupDataModules) do
-							if string.lower(dataModule.name) == markupTypeLower then
+							local isNameMatch = string.lower(dataModule.name) == markupTypeLower
+
+							if isNameMatch and dataModule.type ~= "programmatic" then
 								if dataModule.type == "paired" then
 									local deleteMarkup = markupValue
 										and markupValue == config.DELETE_MARKUP_VALUE_SYNTAX
@@ -2094,7 +2103,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 								end
 								
 								break
-							elseif j == #markupDataModules then
+							elseif j == #markupDataModules or isNameMatch and dataModule.type == "programmatic" then
 								warn(
 									"Failed to parse tag \"" 
 										.. string.sub(t, i, tagEndPos)
