@@ -86,6 +86,10 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 							or Instance.new("Folder", obj._contentFolder)
 						parent.Name = "BackgroundImages"
 	
+						local proportionalSpanWidth = obj:_GetProportionalSize(spanData.spanSize.X)
+						local proportionalSpanHeight = obj:_GetProportionalSize(spanData.spanSize.Y)
+						local proportionalSpanPositionX = obj:_GetProportionalSize(spanData.spanPosition.X)
+						local proportionalSpanPositionY = obj:_GetProportionalSize(spanData.spanPosition.Y)
 						local widthMul = markups.attributes.widthMul or 1
 						local heightMul = markups.attributes.heightMul or 1
 						local verticalAlignment = printerData.markups.verticalAlignment.value
@@ -115,21 +119,21 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
 							)
-									and spanData.spanSize.X / containerSize.X
-								or spanData.spanSize.X / containerSize.Y) * widthMul,
+									and proportionalSpanWidth / containerSize.X
+								or proportionalSpanWidth / containerSize.Y) * widthMul,
 							((
 								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
 							)
-									and spanData.spanSize.Y / containerSize.Y
-								or spanData.spanSize.Y / containerSize.X) * heightMul
+									and proportionalSpanHeight / containerSize.Y
+								or proportionalSpanHeight / containerSize.X) * heightMul
 						)
 						image.Position = UDim2.fromScale(
-							(spanData.spanPosition.X + spanData.spanSize.X / 2) / containerSize.X,
+							(proportionalSpanPositionX + proportionalSpanWidth / 2) / containerSize.X,
 							(
 								verticalOffset
-								+ spanData.spanPosition.Y
-								+ spanData.spanSize.Y / 2
+								+ proportionalSpanPositionY
+								+ proportionalSpanHeight / 2
 							) / containerSize.Y
 						)
 	

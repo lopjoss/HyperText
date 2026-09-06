@@ -74,6 +74,9 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 			or "rbxassetid://" .. markups.img.value
 		local entry = obj._constructionData.rowEntries[index]
 
+		local proportionalWidth = obj:_GetProportionalSize(entry.width)
+		local proportionalHeight = obj:_GetProportionalSize(entry.height)
+
 		local image = Instance.new("ImageLabel", row)
 		image.Name = "Image_" .. imageURI
 		image.BackgroundTransparency = 1
@@ -88,11 +91,11 @@ local module : types.dataModule<typeof(name), typeof(type_), nil, nil, typeof(ap
 			(
 				markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 					or markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
-			) and entry.width / row.AbsoluteSize.X or entry.width / row.AbsoluteSize.Y,
+			) and proportionalWidth or proportionalWidth,
 			(
 				markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 					or markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
-			) and entry.height / row.AbsoluteSize.Y or entry.height / row.AbsoluteSize.X
+			) and proportionalHeight or proportionalHeight
 		)
 		
 		local printerRowEntry : types.printerDataRowEntry = {
