@@ -318,7 +318,7 @@ return function(
 					printerData.character:SetAttribute("DefaultTextSize", defaultTextSize * scale)
 				end
 
-				if not onClear and n == 1 then
+				if not onClear and (not reversing and n == 1 or reversing and n == 0) then
 					if not attrs.loop then
 						stop()
 					else
