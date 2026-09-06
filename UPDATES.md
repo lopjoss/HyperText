@@ -4,9 +4,10 @@
 	- bidirectional support
 	- applyToWhitespace field in markup datamodule
 	- remove extreme hot paths
+	- make pausing preserve interval and wait markup delays for when resuming
 ]]
 
---[[	v4.2.0		9-8-2026
+--[[	v4.2.0		6-9-2026
 
 	ADDITIONS:
 		added caching limits in configs
@@ -28,6 +29,7 @@
 		fixed a leading br markup not creating a line break
 		fixed a leading invisible self closing markup make the first visible character yield
 		fixed shadow not resizing correctly during character scaling
+		fixed the grow animation not looping
 
 ]]
 
