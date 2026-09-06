@@ -45,7 +45,7 @@ local function yieldWhile(callback : (elapsed : number) -> boolean)
 	end
 end
 
-for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+for _, dataModule in ipairs(markupDataModules) do
 	local isStackable = dataModule.type == "paired" and dataModule.stackable
 	local markup = not isStackable 
 		and defaultMarkupsIndexable[dataModule.name] :: types.markupIndexable
@@ -135,7 +135,7 @@ for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules
 	end
 end
 
-for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+for _, dataModule in ipairs(markupDataModules) do
 	if dataModule.onDefaultMarkupsChanged then
 		dataModule.onDefaultMarkupsChanged(config.DEFAULT_MARKUPS)
 	end
@@ -256,7 +256,7 @@ methods.UpdateDefaultMarkups = function(
 )
 	util.mergeMarkups(self._markups, markups)
 
-	for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+	for _, dataModule in ipairs(markupDataModules) do
 		if dataModule.onDefaultMarkupsChanged then
 			dataModule.onDefaultMarkupsChanged(self._markups)
 		end
@@ -341,7 +341,7 @@ methods.Render = function(
 
 					for _, dataModule in ipairs(markupDataModules) do
 						if dataModule.type == "paired" then
-							self._constructionData.spans[dataModule.name] = {}
+							self._constructionData.spans[string.lower(dataModule.name)] = {}
 
 							if not dataModule.stackable then
 								self:_CreateSpan(dataModule.name)
@@ -397,8 +397,8 @@ methods.Render = function(
 
 										self._firstRowEntryIndex = firstEntry.word.index + first - 1
 									elseif firstEntry.selfClosingMarkup then
-										for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
-											if string.lower(dataModule.name) == string.lower(firstEntry.selfClosingMarkup.type_) then
+										for _, dataModule in ipairs(markupDataModules) do
+											if string.lower(dataModule.name) == firstEntry.selfClosingMarkup.type_ then
 												if dataModule.type == "selfClosing" and dataModule.yieldFromIntervalOnPrint then
 													self._firstRowEntryIndex = firstEntry.selfClosingMarkup.index
 												end
@@ -988,7 +988,7 @@ methods._Print = function(
 				for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
 					if 
 						dataModule.type == "selfClosing"
-						and string.lower(dataModule.name) == string.lower(data.selfClosingMarkup.type_)
+						and string.lower(dataModule.name) == data.selfClosingMarkup.type_
 						and dataModule.onPrint_
 					then
 						if dataModule.yieldFromIntervalOnPrint then
@@ -1053,7 +1053,7 @@ methods._Construct = function(
 				for _, dataModule in ipairs(markupDataModules) do
 					if
 						dataModule.type == "selfClosing"
-						and string.lower(dataModule.name) == string.lower(type_)
+						and string.lower(dataModule.name) == type_
 						and dataModule.getSize
 					then
 						return dataModule.getSize(self, markups)
@@ -1348,7 +1348,7 @@ methods._Construct = function(
 				for _, dataModule in ipairs(markupDataModules) do
 					if 
 						dataModule.type == "selfClosing"
-						and string.lower(dataModule.name) == string.lower(data.selfClosingMarkup.type_)
+						and string.lower(dataModule.name) == data.selfClosingMarkup.type_
 						and dataModule.getSize
 					then
 						local size = dataModule.getSize(self, data.selfClosingMarkup.markups)
@@ -1879,9 +1879,9 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 		local t = text
 		local markupStackEntries : {[string] : number} = {}
 		local markupHistory : {string} = {}
-		local closeLastSpanFor : {[string] : boolean} = {}
+		local closeLastSpanFor : {[string] : {boolean}} = {}
 		
-		for dataModule in util.iterateMarkupDataModulesByPrintPriority(markupDataModules) do
+		for _, dataModule in ipairs(markupDataModules) do
 			if dataModule.type == "paired" and dataModule.stackable then
 				local stackableMarkups = self._constructionMarkups :: {[string] : types.stack<types.markupIndexable>}
 				local defaultStack = (stackableMarkups)[dataModule.name].stack
@@ -1932,12 +1932,13 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 
 					if tagEndPos and valueEndPos and typeEndPos then
 						local markupType = string.sub(t, i + 1, typeEndPos - 1)
+						local markupTypeLower = string.lower(markupType)
 						local markupValue = typeEndPos and typeEndPos < valueEndPos - 1
 							and string.sub(t, typeEndPos + 1, valueEndPos - 1)
 							or nil
 						
 						for j, dataModule in ipairs(markupDataModules) do
-							if string.lower(dataModule.name) == string.lower(markupType) then
+							if string.lower(dataModule.name) == markupTypeLower then
 								if dataModule.type == "paired" then
 									local deleteMarkup = markupValue
 										and markupValue == config.DELETE_MARKUP_VALUE_SYNTAX
@@ -1957,16 +1958,16 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 											local attrsValues = self:_ParseAttrs(i, valueEndPos, tagEndPos, markupValue, dataModule.attributes, dataModule.valueAttributes)
 
 											if success or #attrsValues > 0 then
-												if not dataModule.stackable or convertedValue or markupStackEntries[dataModule.name] > 0 then
+												if not dataModule.stackable or convertedValue ~= nil or markupStackEntries[dataModule.name] > 0 then
 													if dataModule.stackable then
 														markupStackEntries[dataModule.name] += 1
 													end
 													
-													table.insert(markupHistory, 1, markupType)
+													table.insert(markupHistory, 1, markupTypeLower)
 													
 													self._constructionScheduler:Append(function()
 														if self._constructionMarkups then
-															self:_ApplyMarkup(markupType, convertedValue, attrsValues, dataModule.stackable)
+															self:_ApplyMarkup(markupTypeLower, convertedValue, attrsValues, dataModule.stackable)
 	
 															if dataModule.onConstruction then
 																local markups = util.deepCopy(self._constructionMarkups)
@@ -1977,8 +1978,12 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 																)
 															end
 	
+															if not closeLastSpanFor[markupTypeLower] then
+																closeLastSpanFor[markupTypeLower] = {}
+															end
+
 															if markupValue then
-																closeLastSpanFor[string.lower(markupType)] = true
+																table.insert(closeLastSpanFor[markupTypeLower], 1, true)
 
 																if dataModule.stackable then
 																	local _, stackIndex = util.getLastEntryFromStack(
@@ -1992,6 +1997,8 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 																else
 																	self:_CreateSpan(markupType)
 																end
+															else
+																table.insert(closeLastSpanFor[markupTypeLower], 1, false)
 															end
 														end
 													end)
@@ -2060,7 +2067,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 													
 													if dataModule.appendToCurrentWord then
 														self:_AppendSelfClosingMarkupToCurrentWord(
-															markupType,
+															markupTypeLower,
 															tagEndPos,
 															markups
 														)
@@ -2113,12 +2120,13 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 
 					if tagEndPos then
 						local markupType = string.sub(t, i + 2, tagEndPos - 1)
+						local markupTypeLower = string.lower(markupType)
 						
 						for j, dataModule in ipairs(markupDataModules) do
-							if dataModule.type == "paired" and string.lower(dataModule.name) == string.lower(markupType) then
+							if dataModule.type == "paired" and string.lower(dataModule.name) == markupTypeLower then
 								if #markupHistory > 0 then
 									for k, v in ipairs(markupHistory) do
-										if string.lower(v) == string.lower(markupType) then
+										if v == markupTypeLower then
 											if dataModule.stackable then
 												markupStackEntries[dataModule.name] -= 1
 											end
@@ -2126,11 +2134,11 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 											table.remove(markupHistory, k)
 											
 											self._constructionScheduler:Append(function()
-												self:_RemoveMarkup(markupType, dataModule.stackable)
+												self:_RemoveMarkup(markupTypeLower, dataModule.stackable)
 
-												if closeLastSpanFor[string.lower(markupType)] then
-													closeLastSpanFor[string.lower(markupType)] = nil
-													
+												local closeLastSpan = table.remove(closeLastSpanFor[markupTypeLower], 1)
+
+												if closeLastSpan then
 													self:_CloseLastSpan(markupType)
 												end
 											end)
@@ -2227,7 +2235,7 @@ methods._RemoveMarkup = function(
 	
 	if self._markupHistory and constructionMarkups then
 		for i, v in ipairs(self._markupHistory) do
-			if string.lower(v.type) == string.lower(type_) then
+			if v.type == type_ then
 				util.updateMarkups(
 					constructionMarkups,
 					v.type,
