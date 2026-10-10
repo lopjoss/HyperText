@@ -1,7 +1,7 @@
 --!strict
 
 --[[
-	HyperText v4.2.0
+	HyperText v4.2.1
 
 	Made by @lopjoss
 
@@ -930,6 +930,7 @@ methods._Print = function(
 							entry.height * entry.heightToWidthRatio,
 							entry.height
 						))
+						textLabel.TextSize = entry.height
 						textLabel.SizeConstraint = data.word.markups.sizeConstraint.value
 						textLabel.Size = UDim2.fromScale(
 							(

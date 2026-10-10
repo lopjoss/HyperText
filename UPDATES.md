@@ -7,6 +7,13 @@
 	- make pausing preserve interval and wait markup delays for when resuming
 ]]
 
+--[[	v4.2.1		10-10-2026
+
+	FIXES:
+		fixed an annoying issue where the stroke markup would have an incorrect size when created
+
+]]
+
 --[[	v4.2.0		6-9-2026
 
 	ADDITIONS:
