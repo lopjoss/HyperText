@@ -9,6 +9,10 @@
 
 --[[	v4.3.0		10-10-2026
 
+	ADDITIONS:
+		added the ZIndex attribute to the bgImg markup
+		added the aspectRatio attribute to the bgImg markup
+
 	FIXES:
 		rendered text now accounts for kerning, so the horizontal positioning of characters should now be identical to that of TextLabel instances, meaning there shouldn't be any more unevenly spread text
 

@@ -306,7 +306,7 @@ Emits an image with the given ID or URI as a particle effect from the rendered c
 <details>
 <summary><code>bgImg</code></summary>
 
-Displays an image behind the complete span of marked text. The image’s ZIndex is one less than the ZIndex markup value, so the ZIndex markup value must therefore be at least 2 greater than the container’s ZIndex for the image to be visible. This markup is stackable and inherits the same flipbook attributes as the img markup.
+Displays an image behind the complete span of marked text. By default, the image's `ZIndex` is one less than the `ZIndex` markup value; override this with the `ZIndex` attribute. The `ZIndex` markup value must be at least 2 greater than the container's `ZIndex` for the image to be visible. This markup is stackable and inherits the same flipbook attributes as the `img` markup.
 
 <table>
 <tr><th>Luau value</th><td><code>number | string</code></td></tr>
@@ -317,8 +317,10 @@ Displays an image behind the complete span of marked text. The image’s ZIndex 
 
 | Attribute | Luau value | ASCII value | Description |
 | --- | --- | --- | --- |
-| `widthMul` | `number?` | `number \| /` | Multiplies the background image's width relative to the marked text's width. Only accepts a number above or equal to 0. |
+| `widthMul` | `number?` | `number \| /` | Multiplies the background image's width, calculated from the marked text's width or from `aspectRatio` when set. Defaults to `1` when deleted. Only accepts a number above or equal to 0. |
 | `heightMul` | `number?` | `number \| /` | Multiplies the background image's height relative to the marked text's height. Only accepts a number above or equal to 0. |
+| `ZIndex` | `number?` | `number \| /` | Overrides the background image's `ZIndex`. When deleted, it defaults to one less than the `ZIndex` markup value. |
+| `aspectRatio` | `number?` | `number \| /` | Sets the width-to-height ratio before `widthMul` is applied. Width is calculated as the marked text's height multiplied by `heightMul`, `aspectRatio`, and `widthMul`. When deleted, width is based on the marked text's width instead. |
 | `trans` | `number` | `number` | The transparency of the background image. |
 | `color` | `Color3` | `r,g,b` | The color of the background image. |
 

@@ -948,6 +948,8 @@ export type animValueAttrs = {
 export type bgImgAttrs = {
 	heightMul : number?,
 	widthMul : number?,
+	ZIndex : number?,
+	aspectRatio : number?,
 	trans : number,
 	color : Color3,
 }

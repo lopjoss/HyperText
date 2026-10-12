@@ -28,6 +28,14 @@ local attrsConverters : types.bgImgAttrsConverters = {
 		end,
 		unrequired = true,
 	},
+	ZIndex = {
+		convert = util.stringToNumber,
+		unrequired = true,
+	},
+	aspectRatio = {
+		convert = util.stringToNumber,
+		unrequired = true,
+	},
 	trans = {
 		convert = util.stringToNumber,
 	},
@@ -86,12 +94,15 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 							or Instance.new("Folder", obj._contentFolder)
 						parent.Name = "BackgroundImages"
 	
-						local proportionalSpanWidth = obj:_GetProportionalSize(spanData.spanSize.X)
-						local proportionalSpanHeight = obj:_GetProportionalSize(spanData.spanSize.Y)
-						local proportionalSpanPositionX = obj:_GetProportionalSize(spanData.spanPosition.X)
-						local proportionalSpanPositionY = obj:_GetProportionalSize(spanData.spanPosition.Y)
 						local widthMul = markups.attributes.widthMul or 1
 						local heightMul = markups.attributes.heightMul or 1
+						local proportionalSpanWidth = obj:_GetProportionalSize(spanData.spanSize.X)
+						local proportionalSpanHeight = obj:_GetProportionalSize(spanData.spanSize.Y)
+						local imageWidth = markups.attributes.aspectRatio
+							and proportionalSpanHeight * markups.attributes.aspectRatio * heightMul
+							or proportionalSpanWidth
+						local proportionalSpanPositionX = obj:_GetProportionalSize(spanData.spanPosition.X)
+						local proportionalSpanPositionY = obj:_GetProportionalSize(spanData.spanPosition.Y)
 						local verticalAlignment = printerData.markups.verticalAlignment.value
 						local constructionSize = obj:GetConstructionSize() :: Vector2
 						local containerSize = Vector2.new(
@@ -112,15 +123,15 @@ local module : types.dataModule<typeof(name), typeof(type_), typeof(applyToImage
 						image.Image = imageURI
 						image.ImageTransparency = markups.attributes.trans
 						image.ImageColor3 = markups.attributes.color
-						image.ZIndex = printerData.markups.ZIndex.value - 1
+						image.ZIndex = markups.attributes.ZIndex or printerData.markups.ZIndex.value - 1
 						image.SizeConstraint = printerData.markups.sizeConstraint.value
 						image.Size = UDim2.fromScale(
 							((
 								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
 							)
-									and proportionalSpanWidth / containerSize.X
-								or proportionalSpanWidth / containerSize.Y) * widthMul,
+									and imageWidth / containerSize.X
+								or imageWidth / containerSize.Y) * widthMul,
 							((
 								printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
 								or printerData.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
