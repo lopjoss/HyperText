@@ -1,7 +1,7 @@
 --!strict
 
 local scheduler = require("./Scheduler")
-local signal = require("./Signal")
+local signal = require(script.Parent.Parent.Signal)
 
 local module = {}
 

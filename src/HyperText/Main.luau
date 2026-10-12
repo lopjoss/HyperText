@@ -19,7 +19,7 @@ local util = require("./Util")
 local types = require("./Types")
 local config = require("./Config")
 local scheduler = require("./Scheduler")
-local signal = require("./Signal")
+local signal = require(script.Parent.Parent.Signal)
 
 local updater : {[string] : (dt : number) -> ()} = {}
 local markupDataModules = util.getAllMarkupDataModules()

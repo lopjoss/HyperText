@@ -7,7 +7,7 @@ local SoundService = game:GetService("SoundService")
 local types = require("../../Types")
 local util = require("../../Util")
 local config = require("../../Config")
-local memoizer = require("../../Memoizer")
+local memoizer = require(script.Parent.Parent.Parent.Parent.Memoizer)
 
 type schema = {[string] : Sound}
 

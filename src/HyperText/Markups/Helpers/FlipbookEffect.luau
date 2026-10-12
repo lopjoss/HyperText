@@ -5,7 +5,7 @@ local HttpService = game:GetService("HttpService")
 
 local types = require("../../Types")
 local config = require("../../Config")
-local memoizer = require("../../Memoizer")
+local memoizer = require(script.Parent.Parent.Parent.Parent.Memoizer)
 
 local module = {}
 

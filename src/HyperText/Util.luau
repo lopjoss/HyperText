@@ -2,7 +2,7 @@
 
 local TextService = game:GetService("TextService")
 
-local memoizer = require("./Memoizer")
+local memoizer = require(script.Parent.Parent.Memoizer)
 local types = require("./Types")
 local config = require("./Config")
 local flipbookEffect = require("./Markups/Helpers/FlipbookEffect")

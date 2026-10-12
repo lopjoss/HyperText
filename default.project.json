@@ -4,8 +4,11 @@
     "$className": "DataModel",
 
     "ReplicatedStorage": {
-      "HyperText": {
-        "$path": "src/HyperText"
+      "Packages": {
+        "$path": "Packages",
+        "HyperText": {
+          "$path": "src/HyperText"
+        }
       }
     },
 

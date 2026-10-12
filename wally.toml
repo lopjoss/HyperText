@@ -1,0 +1,9 @@
+[package]
+name = "lopjoss/hyper-text"
+version = "4.2.1"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+Memoizer = "lopjoss/memoizer@1.4.6"
+Signal = "lopjoss/signal@1.0.0"
