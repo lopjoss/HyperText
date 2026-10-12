@@ -7,6 +7,13 @@
 	- make pausing preserve interval and wait markup delays for when resuming
 ]]
 
+--[[	v4.3.0		10-10-2026
+
+	FIXES:
+		rendered text now accounts for kerning, so the horizontal positioning of characters should now be identical to that of TextLabel instances, meaning there shouldn't be any more unevenly spread text
+
+]]
+
 --[[	v4.2.1		10-10-2026
 
 	FIXES:

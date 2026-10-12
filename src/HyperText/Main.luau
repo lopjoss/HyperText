@@ -889,110 +889,105 @@ methods._Print = function(
 		for _, data in ipairs(currentWord) do
 			if data.word then
 				for first, last in utf8.graphemes(data.word.str) do
-					if data.word.splitCharacterIndex and last == #data.word.str then
-						break
-					end
-					
-					local baseEntry = self._constructionData.rowEntries[data.word.index + first - 1]
-						:: types.constructionDataRowEntry<false>
-					local dashEntry = self._constructionData.rowEntries[data.word.index + first - 1 + .5]
-						:: types.constructionDataRowEntry<false>
-										
-					for i, entry in ipairs({baseEntry, dashEntry}) do
-						self:_YieldFromInterval(
-							data.word.markups.interval.value,
-							data.word.index + first - 1
-						)
-						
-						local proportionalWidth, scale = self:_GetProportionalSize(entry.height * entry.heightToWidthRatio)
-						local proportionalHeight = entry.height * scale
-
-						if self._pausedRender then
-							coroutine.yield()
-						end
-						
-						local character = i == 1
-							and string.sub(data.word.str, first, last)
-							or string.sub(data.word.str, last + 1, last + 1)
-						local entryIndex = i == 1
+					local isDash = data.word.splitCharacterIndex
+						and data.word.splitCharacterIndex == data.word.index + first - 1
+					local entryIndex = not isDash
 							and data.word.index + first - 1
 							or data.word.index + first - 1 + .5
 
-						local textLabel = Instance.new("TextLabel", row)
-						textLabel.BorderSizePixel = 0
-						textLabel.LayoutOrder = entryIndex
-						textLabel.RichText = true
-						textLabel.BackgroundTransparency = 1
-						textLabel.Text = character
-						textLabel.TextXAlignment = Enum.TextXAlignment.Left
-						textLabel.ZIndex = data.word.markups.ZIndex.value
-						textLabel:SetAttribute("DefaultTextSize", Vector2.new(
-							entry.height * entry.heightToWidthRatio,
-							entry.height
-						))
-						textLabel.TextSize = entry.height
-						textLabel.SizeConstraint = data.word.markups.sizeConstraint.value
-						textLabel.Size = UDim2.fromScale(
-							(
-								data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
-									or data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
-							) and proportionalWidth / row.AbsoluteSize.X or proportionalWidth / row.AbsoluteSize.Y,
-							(
-								data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
-									or data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
-							) and proportionalHeight / row.AbsoluteSize.Y or proportionalHeight / row.AbsoluteSize.X
-						)
-						
-						textLabel:SetAttribute("DEBUG_HTWRatio", entry.heightToWidthRatio)
-						
-						local printerRowEntry : types.printerDataRowEntry<false> = {
-							character = textLabel,
-							row = row,
-							constructionDataRowEntry = entry :: types.constructionDataRowEntry<false>,
-							markups = data.word.markups,
-							index = entryIndex,
-							whitespace = performAsWhiteSpace,
-							
-							containers = {},
-							position = Vector2.zero,
-							rotation = 0,
-						}
-						
-						table.insert(self._printerData.rowEntries, printerRowEntry :: types.printerDataRowEntry)
+					local entry = self._constructionData.rowEntries[entryIndex] :: types.constructionDataRowEntry<false>
 
-						local constraint = Instance.new("UITextSizeConstraint", textLabel)
-						constraint.MinTextSize = proportionalHeight
+					self:_YieldFromInterval(
+						data.word.markups.interval.value,
+						data.word.index + first - 1
+					)
+					
+					local proportionalWidth, scale = self:_GetProportionalSize(entry.width)
+					local proportionalHeight = entry.height * scale
+
+					if self._pausedRender then
+						coroutine.yield()
+					end
+					
+					-- local character = i == 1
+					-- 	and string.sub(data.word.str, first, last)
+					-- 	or string.sub(data.word.str, last + 1, last + 1)
+					local character = string.sub(data.word.str, first, last)
+
+					local textLabel = Instance.new("TextLabel", row)
+					textLabel.BorderSizePixel = 0
+					textLabel.LayoutOrder = entryIndex
+					textLabel.RichText = true
+					textLabel.BackgroundTransparency = 1
+					textLabel.Text = character
+					textLabel.TextXAlignment = Enum.TextXAlignment.Left
+					textLabel.ZIndex = data.word.markups.ZIndex.value
+					textLabel:SetAttribute("DefaultTextSize", Vector2.new(
+						entry.height * entry.heightToWidthRatio,
+						entry.height
+					))
+					textLabel.TextSize = entry.height
+					textLabel.SizeConstraint = data.word.markups.sizeConstraint.value
+					textLabel.Size = UDim2.fromScale(
+						(
+							data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+								or data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXX
+						) and proportionalWidth / row.AbsoluteSize.X or proportionalWidth / row.AbsoluteSize.Y,
+						(
+							data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeXY
+								or data.word.markups.sizeConstraint.value == Enum.SizeConstraint.RelativeYY
+						) and proportionalHeight / row.AbsoluteSize.Y or proportionalHeight / row.AbsoluteSize.X
+					)
+					
+					textLabel:SetAttribute("DEBUG_HTWRatio", entry.heightToWidthRatio)
+					
+					local printerRowEntry : types.printerDataRowEntry<false> = {
+						character = textLabel,
+						row = row,
+						constructionDataRowEntry = entry :: types.constructionDataRowEntry<false>,
+						markups = data.word.markups,
+						index = entryIndex,
+						whitespace = performAsWhiteSpace,
+						
+						containers = {},
+						position = Vector2.zero,
+						rotation = 0,
+					}
+					
+					table.insert(self._printerData.rowEntries, printerRowEntry :: types.printerDataRowEntry)
+
+					local constraint = Instance.new("UITextSizeConstraint", textLabel)
+					constraint.MinTextSize = proportionalHeight
+					constraint.MaxTextSize = proportionalHeight
+					
+					local function resize(fromAbsoluteSize : boolean?)
+						local defaultTextSize = textLabel:GetAttribute("DefaultTextSize") :: Vector2
+						local _, scale = self:_GetProportionalSize(defaultTextSize.X)
+						local proportionalHeight = defaultTextSize.Y * scale
+						
+						constraint.MinTextSize = 0
+						
 						constraint.MaxTextSize = proportionalHeight
+						constraint.MinTextSize = math.clamp(proportionalHeight, 0, 100)
 						
-						local function resize(fromAbsoluteSize : boolean?)
-							local defaultTextSize = textLabel:GetAttribute("DefaultTextSize") :: Vector2
-							local _, scale = self:_GetProportionalSize(defaultTextSize.X)
-							local proportionalHeight = defaultTextSize.Y * scale
-							
-							constraint.MinTextSize = 0
-							
-							constraint.MaxTextSize = proportionalHeight
-							constraint.MinTextSize = math.clamp(proportionalHeight, 0, 100)
-							
-							textLabel.TextSize = proportionalHeight
-						end
+						textLabel.TextSize = proportionalHeight
+					end
 
-						textLabel:GetAttributeChangedSignal("DefaultTextSize"):Connect(resize)
-						
-						local connection = self._container:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-							resize(true)
-						end)
-						textLabel.Destroying:Once(function()
-							connection:Disconnect()
-						end)
+					textLabel:GetAttributeChangedSignal("DefaultTextSize"):Connect(resize)
+					
+					local connection = self._container:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+						resize(true)
+					end)
+					textLabel.Destroying:Once(function()
+						connection:Disconnect()
+					end)
 
-						if not performAsWhiteSpace then
-							util.fireAllDataModuleOnPrints(
-								self,
-								printerRowEntry :: types.printerDataRowEntry,
-								updater
-							)
-						end
+					if not performAsWhiteSpace then
+						util.fireAllDataModuleOnPrints(
+							self,
+							printerRowEntry :: types.printerDataRowEntry,
+							updater
+						)
 					end
 				end
 			elseif data.selfClosingMarkup then
@@ -1093,27 +1088,21 @@ methods._Construct = function(
 
 				for i, data in ipairs(currentWord) do
 					if data.word then
+						local kernedWord, kernedWordWidth = util.fetchKernedWord(data.word.str, data.word.markups)
+
 						for first, last in utf8.graphemes(data.word.str) do
-							local character = string.sub(data.word.str, first, last)
-							local size = data.word.markups.size.value
-							local maxTextBounds = util.fetchTextBounds(
-								character,
-								data.word.markups,
-								math.huge
-							)
-							local characterWidth = size * maxTextBounds.X / maxTextBounds.Y
-							
+							local characterWidth = kernedWord[first].kernedWidth
+
 							if rowData.width + wordWidth + characterWidth <= containerWidth then
 								wordWidth += characterWidth
 								lastFittingEntryIndex = i
 								lastFittingByteEnd = last
 
-								local dashMaxTextBounds = util.fetchTextBounds(
-									"-",
-									data.word.markups,
-									math.huge
-								)
-								local dashWidth = size * dashMaxTextBounds.X / dashMaxTextBounds.Y
+								local kernedWordWidthWithDash = util.fetchTextBounds(
+									data.word.str .. "-",
+									data.word.markups
+								).X
+								local dashWidth = kernedWordWidthWithDash - kernedWordWidth
 
 								if rowData.width + wordWidth + dashWidth <= containerWidth then
 									dashSplitEntryIndex = i
@@ -1291,35 +1280,23 @@ methods._Construct = function(
 
 		for _, data in ipairs(currentWord) do
 			if data.word then
+				local kernedWord = util.fetchKernedWord(data.word.str, data.word.markups)
+
 				for first, last in utf8.graphemes(data.word.str) do
-					if data.word.splitCharacterIndex and last == #data.word.str then
-						break
-					end
-					
+					local kernedCharacter = kernedWord[first]
 					local character = string.sub(data.word.str, first, last)
 					local size = data.word.markups.size.value
-					local maxTextBounds = util.fetchTextBounds(
-						character,
-						data.word.markups,
-						math.huge
-					)
-					local heightToWidthRatio = maxTextBounds.X / maxTextBounds.Y
-					local characterWidth = size * heightToWidthRatio
 					
 					local entryData : types.constructionDataRowEntry = {
 						str = character,
 						height = size,
-						width = characterWidth,
+						width = kernedCharacter.kernedWidth,
 						rowIndex = rowIndex,
-						heightToWidthRatio = heightToWidthRatio,
+						heightToWidthRatio = kernedCharacter.heightToWidthRatio,
 					}
-					self._constructionData.rowEntries[data.word.index + first - 1] = entryData
-					rowData.width += characterWidth
-
-					if 
-						data.word.splitCharacterIndex
-						and data.word.splitCharacterIndex == data.word.index + first - 1
-					then
+					rowData.width += kernedCharacter.kernedWidth
+					
+					if data.word.splitCharacterIndex and data.word.splitCharacterIndex == data.word.index + first - 1 then
 						for _, spans in pairs(self._constructionData.spans) do
 							for _, spanData in pairs(spans) do
 								local index = table.find(spanData.rowEntryIndices, data.word.splitCharacterIndex)
@@ -1333,22 +1310,10 @@ methods._Construct = function(
 								end
 							end
 						end
-						
-						local dashMaxTextBounds = util.fetchTextBounds(
-							"-",
-							data.word.markups,
-							math.huge
-						)
-						heightToWidthRatio = dashMaxTextBounds.X / dashMaxTextBounds.Y
-						characterWidth = size * heightToWidthRatio
-						entryData = table.clone(entryData)
-						
-						entryData.width = characterWidth
-						entryData.str = "-"
-						entryData.heightToWidthRatio = heightToWidthRatio
-						
+
 						self._constructionData.rowEntries[data.word.splitCharacterIndex + .5] = entryData
-						rowData.width += characterWidth
+					else
+						self._constructionData.rowEntries[data.word.index + first - 1] = entryData
 					end
 
 					if size > rowData.height then

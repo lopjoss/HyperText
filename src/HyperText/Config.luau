@@ -37,6 +37,14 @@ config.COLOR_SHORTCUTS.darkgray     = Color3.fromRGB(80, 80, 80)
 config.COLOR_SHORTCUTS.lightgray    = Color3.fromRGB(220, 220, 220)
 
 --[[
+	if false, HyperText will always use the initial kerned word spacing 
+	created at the start of a render when resizing its content. This is
+	better for performance, but if the container's size changes,
+	horizontal character positioning may be slightly off
+]]
+config.REKERN_WORD_ON_RESIZE = true
+
+--[[
 	the value of which you must set applicable markups or attributes to in
 	order to delete it
 ]]
@@ -77,7 +85,12 @@ config.MAX_FLIPBOOK_IMG_SIZE_CACHE_RECORDS = 1000
 	the maximum amount of individual character's textbounds which can be cached
 	at once 
 ]]
-config.MAX_TEXTBOUNDS_CACHE_RECORDS = 500
+config.MAX_TEXT_BOUNDS_CACHE_RECORDS = 1000
+
+--[[
+	the maximum amount of kerned words which can be cached at once
+]]
+config.MAX_KERNED_WORDS_CACHE_RECORDS = 1000
 
 --[[	
 	any word wider than this fraction of the container's width which doesn't

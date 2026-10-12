@@ -504,22 +504,34 @@ util.updateMarkups = function(
 	return previousValue, previousAttrsValues
 end
 
-type textBoundsCacheSchema = {
+type textMarkupsSchema<T> = {
 	[string] : {
 		[number | string] : {
 			[number] : {
 				[Enum.FontWeight] : {
-					[Enum.FontStyle] : Vector2
+					[Enum.FontStyle] : T
 				}
 			}
 		}
 	}
 }
 
+type textBoundsCacheSchema = textMarkupsSchema<Vector2>
+type kernedWord = {[number] : {
+	heightToWidthRatio : number,
+	kernedWidth : number,
+}}
+type kernedWordsCacheSchema = textMarkupsSchema<{value : kernedWord}>
+
 local textBoundsCache = memoizer.new<<textBoundsCacheSchema>>(
 	5,
-	config.MAX_TEXTBOUNDS_CACHE_RECORDS
+	config.MAX_TEXT_BOUNDS_CACHE_RECORDS
 )
+local kernedWordsCache = memoizer.new<<kernedWordsCacheSchema>>(
+	5,
+	config.MAX_KERNED_WORDS_CACHE_RECORDS
+)
+
 util.textBoundsCache = textBoundsCache
 
 util.getTextboundsCacheFetschinSchema = function(
@@ -565,6 +577,52 @@ util.fetchTextBounds = function(
 	)
 	
 	return textBoundsCache:Get(fetschingSchema)
+end
+
+util.fetchKernedWord = function(word : string, markups : types.markups) : (kernedWord, number)
+	local fetchingSchema : memoizer.fetchingSchema<kernedWordsCacheSchema> = {
+		[word] = {
+			[markups.font.value] = {
+				[markups.size.value] = {
+					[markups.weight.value] = {
+						[markups.italic.value and Enum.FontStyle.Italic or Enum.FontStyle.Normal] = function()
+							local kernedWord : kernedWord = {}
+							local prefix = ""
+							local prefixWidth = 0
+
+							for first, last in utf8.graphemes(word) do
+								local character = string.sub(word, first, last)
+								local maxTextBounds = util.fetchTextBounds(character, markups, math.huge)
+								local heightToWidthRatio = maxTextBounds.X / maxTextBounds.Y
+
+								prefix ..= character
+								local nextPrefixWidth = util.fetchTextBounds(prefix, markups).X
+								local kernedWidth = nextPrefixWidth - prefixWidth
+
+								prefixWidth = nextPrefixWidth
+
+								kernedWord[first] = {
+									heightToWidthRatio = heightToWidthRatio,
+									kernedWidth = kernedWidth,
+								}
+							end
+
+							return kernedWord
+						end
+					}
+				}
+			}
+		}
+	}
+
+	local kernedWord = kernedWordsCache:Get(fetchingSchema)
+	local kernedWordWidth = 0
+
+	for _, data in pairs(kernedWord) do
+		kernedWordWidth += data.kernedWidth
+	end
+
+	return kernedWord, kernedWordWidth
 end
 
 util.fullyCacheStackableImageMarkup = function(markup : types.stack<types.markupIndexable>, id : number?)
