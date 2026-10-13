@@ -1,10 +1,10 @@
 --[[ TODO:
 	- custom fonts
 	- classes
-	- bidirectional support
+	- responsive kerning
 	- applyToWhitespace field in markup datamodule
 	- remove extreme hot paths
-	- make pausing preserve interval and wait markup delays for when resuming
+	- make pausing preserve interval and wait markup delays once resumed
 ]]
 
 --[[	v4.2.1		10-10-2026
