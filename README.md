@@ -2,6 +2,8 @@
 
 HyperText is an advanced rich-text renderer for Roblox. It uses markup tags to style, animate, pace, and manipulate text, including gradients, images, typewriter effects, particles, clearing animations, and custom markups.
 
+[DevForum post](https://devforum.roblox.com/t/hypertext-v421-easily-add-animations-effects-more-to-text-with-this-rich-text-module/4176619)
+
 ## General rules and behavior
 
 Paired tags apply a markup to enclosed content:
@@ -52,7 +54,6 @@ General behavior:
 
 - Tag, attribute, and predefined value capitalization does not matter.
 - Arbitrary values such as font paths remain case-sensitive.
-- Raw newlines are ignored. Use `<br=1>` instead.
 - Literal `<` characters outside valid tags are unsupported.
 - Optional non-stackable paired markup values and optional attributes can be removed with `/`.
 - Stackable paired markup values cannot be removed with `/`; use the closing tag to end an active stack entry.
