@@ -1,7 +1,7 @@
 --!strict
 
 --[[
-	HyperText v4.2.1
+	HyperText v4.3.0
 
 	Made by @lopjoss
 
@@ -1876,9 +1876,18 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 		while i <= #t do
 			local i_local = i
 			local char = string.sub(t, i, i)
+			local isLFNewLine = char == "\n"
+			local isCRLFNewLine = string.sub(t, i, i + 1) == "\r\n"
+			local isWhiteSpace = string.match(char, "%s") and not isLFNewLine and not isCRLFNewLine
 			
-			if char ~= "<" and not string.match(char, "%s") then
+			if 
+				char ~= "<"
+				and not isWhiteSpace
+				and not isLFNewLine
+				and not isCRLFNewLine
+			then
 				local word, endPos = string.match(t, "([^<%s]+)()", i) -- captures string from i to a whitespace or < 
+
 				if word then
 					self._constructionScheduler:Append(function()
 						self:_AppendStringToCurrentWord(word, i_local)
@@ -1889,7 +1898,7 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 				end
 				
 				i = endPos or #t
-			elseif string.match(char, "%s") then
+			elseif isWhiteSpace then
 				self._constructionScheduler:Append(function()
 					self:_Construct()
 				end)
@@ -2163,6 +2172,39 @@ methods._ParseText = function(self : types.hyperTextClassObject)
 
 						break
 					end
+				end
+			elseif isLFNewLine or isCRLFNewLine then
+				local lineBreakMarkupName : types.markup = "br"
+				
+				for _, dataModule in ipairs(markupDataModules) do
+					if dataModule.type == "selfClosing" and dataModule.name == lineBreakMarkupName then
+						self._constructionScheduler:Append(function()
+							self:_Construct()
+						end)
+
+						self._constructionScheduler:Append(function()
+							if self._constructionMarkups then
+								local markups = util.deepCopy(self._constructionMarkups)
+
+								util.updateMarkups(markups, lineBreakMarkupName, 1, {})
+
+								if dataModule.onConstruction then
+									dataModule.onConstruction(
+										self,
+										markups
+									)
+								end
+							end
+						end)
+
+						break
+					end
+				end
+
+				if isCRLFNewLine then
+					i += 2
+				else
+					i += 1
 				end
 			end
 		end
