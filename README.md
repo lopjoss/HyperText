@@ -67,8 +67,6 @@ General behavior:
 - Aspect-ratio-preserving scaling on the container is supported, independent axis resizing is not
 - Destroying the container automatically destroys its HyperText object.
 
-> Very small text or certain fonts may occasionally position a character one pixel unevenly because fractional positions and sizes ultimately have to be rasterized onto the pixel grid. There is no fixing this.
-
 ## Markup reference
 
 ### Paired markups
