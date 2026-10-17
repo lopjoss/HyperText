@@ -7,14 +7,14 @@
 	- make pausing preserve interval and wait markup delays for when resuming
 ]]
 
---[[	v4.3.0		10-10-2026
+--[[	v4.3.0		17-10-2026
 
 	ADDITIONS:
-		added the ZIndex attribute to the bgImg markup
-		added the aspectRatio attribute to the bgImg markup
+		added the ZIndex and aspectRatio attribute to the bgImg markup
+		raw newlines \n and \r\n are now supported
 
 	FIXES:
-		rendered text now accounts for kerning, so the horizontal positioning of characters should now be identical to that of TextLabel instances, meaning there shouldn't be any more unevenly spread text
+		rendered text now accounts for kerning, so the spacing between characters should now be identical to that of TextLabel instances
 
 ]]
 
