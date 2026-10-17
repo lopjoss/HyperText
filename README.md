@@ -4,6 +4,11 @@ HyperText is an advanced rich-text renderer for Roblox. It uses markup tags to s
 
 [DevForum post](https://devforum.roblox.com/t/hypertext-v421-easily-add-animations-effects-more-to-text-with-this-rich-text-module/4176619)
 
+## wally
+```toml
+HyperText = "lopjoss/hyper-text@4.3.0"
+```
+
 ## General rules and behavior
 
 Paired tags apply a markup to enclosed content:
