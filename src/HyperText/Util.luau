@@ -587,19 +587,27 @@ util.fetchKernedWord = function(word : string, markups : types.markups) : (kerne
 					[markups.weight.value] = {
 						[markups.italic.value and Enum.FontStyle.Italic or Enum.FontStyle.Normal] = function()
 							local kernedWord : kernedWord = {}
-							local prefix = ""
-							local prefixWidth = 0
+							local suffix = ""
+							local suffixWidth = 0
+							
+							local graphemes : {{number}} = {}
 
 							for first, last in utf8.graphemes(word) do
+								table.insert(graphemes, {first, last})
+							end
+
+							for i = #graphemes, 1, -1 do
+								local first, last = unpack(graphemes[i])
 								local character = string.sub(word, first, last)
+								
 								local maxTextBounds = util.fetchTextBounds(character, markups, math.huge)
 								local heightToWidthRatio = maxTextBounds.X / maxTextBounds.Y
 
-								prefix ..= character
-								local nextPrefixWidth = util.fetchTextBounds(prefix, markups).X
-								local kernedWidth = nextPrefixWidth - prefixWidth
-
-								prefixWidth = nextPrefixWidth
+								suffix = character .. suffix
+								local nextSuffixWidth = util.fetchTextBounds(suffix, markups).X
+								local kernedWidth = nextSuffixWidth - suffixWidth
+								
+								suffixWidth = nextSuffixWidth
 
 								kernedWord[first] = {
 									heightToWidthRatio = heightToWidthRatio,
