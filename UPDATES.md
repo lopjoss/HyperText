@@ -7,6 +7,13 @@
 	- make pausing preserve interval and wait markup delays once resumed
 ]]
 
+--[[	v4.3.1		18-10-2026
+
+	FIXES:
+		fixed kerning placement using suffix measurements
+
+]]
+
 --[[	v4.3.0		17-10-2026
 
 	ADDITIONS:

@@ -6,7 +6,7 @@ HyperText is an advanced rich-text renderer for Roblox. It uses markup tags to s
 
 ## wally
 ```toml
-HyperText = "lopjoss/hyper-text@4.3.0"
+HyperText = "lopjoss/hyper-text@4.3.1"
 ```
 
 ## General rules and behavior

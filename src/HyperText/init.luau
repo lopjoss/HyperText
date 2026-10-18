@@ -1,7 +1,7 @@
 --!strict
 
 --[[
-	HyperText v4.3.0
+	HyperText v4.3.1
 
 	Made by @lopjoss
 
